@@ -1,0 +1,453 @@
+/**
+ * POST /api/documents/[id]/sign
+ *
+ * Accepts the completed field values, embeds them into the PDF using pdf-lib,
+ * saves the signed PDF to Vercel Blob (or local disk in dev), and updates
+ * the document record in the DB.
+ *
+ * Body: { fields: Array<{ fieldId: string, value: string }>, token?: string }
+ *
+ * This route handles two signing modes:
+ *
+ *   A) Owner self-sign (session-based):
+ *      - Requires a valid NextAuth session
+ *      - Owner can update any field on the document
+ *      - After signing, document status → 'completed'
+ *
+ *   B) External signer (token-based):
+ *      - Token provided via `Authorization: Bearer <token>` header
+ *        or `?token=` query param, or in the request body as `token`
+ *      - No session required
+ *      - Signer can only update fields assigned to them
+ *      - After saving, sets Signer.status = 'signed' and records IP
+ *      - If ALL signers have now signed → generate final PDF, status = 'completed',
+ *        send completion email to owner
+ *
+ * PDF coordinate note:
+ *   pdf-lib uses a bottom-left origin (like maths/PostScript).
+ *   The browser / our DB use a top-left origin (like CSS/HTML).
+ *   The conversion is:  pdfY = pageHeight − cssY − fieldHeight
+ */
+
+import { NextRequest, NextResponse } from 'next/server'
+import { auth } from '@/auth'
+import { prisma } from '@/lib/prisma'
+import { verifySigningToken } from '@/lib/signing-token'
+import { sendCompletionNotification } from '@/lib/emails'
+import { PDFDocument, rgb, StandardFonts } from 'pdf-lib'
+
+// ── Body types ─────────────────────────────────────────────────────────────────
+
+interface FieldValueInput {
+  fieldId: string
+  /** base64 PNG data URL for image fields, plain text for date/text */
+  value: string
+}
+
+interface RequestBody {
+  fields: FieldValueInput[]
+  /** Optional: external-signer JWT token (alternative to Authorization header) */
+  token?: string
+}
+
+// ── Helper: store a signed PDF (Blob in prod, disk in dev) ─────────────────────
+
+async function storeSignedPdf(filename: string, bytes: Uint8Array): Promise<string> {
+  if (process.env.BLOB_READ_WRITE_TOKEN) {
+    const { put } = await import('@vercel/blob')
+    const blob = await put(filename, Buffer.from(bytes), {
+      access: 'public',
+      contentType: 'application/pdf',
+    })
+    return blob.url
+  }
+
+  // Local dev fallback
+  const fs = await import('fs')
+  const path = await import('path')
+  const uploadsDir = path.join(process.cwd(), 'uploads')
+  await fs.promises.mkdir(uploadsDir, { recursive: true })
+  await fs.promises.writeFile(path.join(uploadsDir, filename), bytes)
+  return filename
+}
+
+// ── Helper: load original PDF bytes (from Blob URL or local disk) ──────────────
+
+async function loadPdfBytes(fileUrl: string): Promise<Buffer | null> {
+  if (fileUrl.startsWith('https://')) {
+    try {
+      const response = await fetch(fileUrl)
+      if (!response.ok) return null
+      return Buffer.from(await response.arrayBuffer())
+    } catch {
+      return null
+    }
+  }
+
+  // Local dev path
+  const fs = await import('fs')
+  const path = await import('path')
+  const filename = path.basename(fileUrl)
+  const filePath = path.join(process.cwd(), 'uploads', filename)
+  try {
+    return await fs.promises.readFile(filePath)
+  } catch {
+    return null
+  }
+}
+
+// ── Helper: build the signed PDF from all filled field values ──────────────────
+
+async function buildSignedPdf(
+  documentId: string,
+  fileUrl: string
+): Promise<Uint8Array | null> {
+  // Load all fields that have a value
+  const dbFields = await prisma.signatureField.findMany({
+    where: { documentId, value: { not: null } },
+  })
+
+  const pdfBytes = await loadPdfBytes(fileUrl)
+  if (!pdfBytes) return null
+
+  let pdfDoc: PDFDocument
+  try {
+    pdfDoc = await PDFDocument.load(new Uint8Array(pdfBytes))
+  } catch {
+    return null
+  }
+
+  const helvetica = await pdfDoc.embedFont(StandardFonts.Helvetica)
+
+  for (const field of dbFields) {
+    const value = field.value
+    if (!value) continue
+
+    const page = pdfDoc.getPage(field.pageNumber - 1)
+    const { width: pageW, height: pageH } = page.getSize()
+
+    const absX      = (field.x / 100) * pageW
+    const absWidth  = (field.width / 100) * pageW
+    const absHeight = (field.height / 100) * pageH
+    // Convert top-left origin (CSS) to bottom-left origin (PDF)
+    const absY = pageH - (field.y / 100) * pageH - absHeight
+
+    if (field.type === 'signature' || field.type === 'initials') {
+      const base64Data = value.replace(/^data:image\/\w+;base64,/, '')
+      const imgBytes   = Buffer.from(base64Data, 'base64')
+
+      try {
+        let img
+        try {
+          img = await pdfDoc.embedPng(new Uint8Array(imgBytes))
+        } catch {
+          img = await pdfDoc.embedJpg(new Uint8Array(imgBytes))
+        }
+        page.drawImage(img, { x: absX, y: absY, width: absWidth, height: absHeight })
+      } catch (imgErr) {
+        console.error('[sign] Failed to embed image for field', field.id, imgErr)
+      }
+    } else {
+      const fontSize = Math.min(12, Math.max(8, absHeight * 0.55))
+      page.drawText(value, {
+        x: absX + 4,
+        y: absY + (absHeight - fontSize) / 2,
+        size: fontSize,
+        font: helvetica,
+        color: rgb(0, 0, 0),
+        maxWidth: absWidth - 8,
+      })
+    }
+  }
+
+  return pdfDoc.save()
+}
+
+// ── Route handler ──────────────────────────────────────────────────────────────
+
+export async function POST(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params
+
+  // ── Parse body ─────────────────────────────────────────────────────────────
+  let body: RequestBody
+  try {
+    body = (await req.json()) as RequestBody
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+  }
+
+  if (!Array.isArray(body.fields)) {
+    return NextResponse.json({ error: 'fields must be an array' }, { status: 400 })
+  }
+
+  // ── Determine signing mode ─────────────────────────────────────────────────
+  // Check for a token in: Authorization header, query param, or body
+  const authHeader = req.headers.get('authorization') ?? ''
+  const tokenFromHeader = authHeader.startsWith('Bearer ')
+    ? authHeader.slice(7)
+    : null
+  const tokenFromQuery = req.nextUrl.searchParams.get('token')
+  const rawToken = tokenFromHeader ?? tokenFromQuery ?? body.token ?? null
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // MODE B: External signer with JWT token
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  if (rawToken) {
+    const tokenPayload = await verifySigningToken(rawToken)
+    if (!tokenPayload) {
+      return NextResponse.json({ error: 'Invalid or expired token' }, { status: 401 })
+    }
+
+    // Verify the token's documentId matches the URL
+    if (tokenPayload.documentId !== id) {
+      return NextResponse.json({ error: 'Token does not match document' }, { status: 403 })
+    }
+
+    // Load the signer record
+    const signer = await prisma.signer.findFirst({
+      where: { id: tokenPayload.signerId, documentId: id },
+      select: { id: true, status: true, name: true, email: true },
+    })
+    if (!signer) {
+      return NextResponse.json({ error: 'Signer not found' }, { status: 404 })
+    }
+    if (signer.status === 'signed') {
+      return NextResponse.json({ error: 'You have already signed this document' }, { status: 400 })
+    }
+
+    // Load this signer's fields to validate the submitted field IDs
+    const signerFields = await prisma.signatureField.findMany({
+      where: { documentId: id, signerId: signer.id },
+      select: { id: true },
+    })
+    const allowedFieldIds = new Set(signerFields.map((f) => f.id))
+
+    // Only update fields that belong to this signer
+    const filteredFields = body.fields.filter((f) => allowedFieldIds.has(f.fieldId))
+
+    await Promise.all(
+      filteredFields.map(({ fieldId, value }) =>
+        prisma.signatureField.updateMany({
+          where: { id: fieldId, documentId: id, signerId: signer.id },
+          data: { value },
+        })
+      )
+    )
+
+    // Capture the signer's IP address for audit purposes
+    const ip =
+      req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
+      req.headers.get('x-real-ip') ??
+      null
+
+    // Mark this signer as having signed
+    await prisma.signer.update({
+      where: { id: signer.id },
+      data: {
+        status: 'signed',
+        signedAt: new Date(),
+        signedIp: ip,
+      },
+    })
+
+    // Check whether ALL signers have now signed
+    const pendingCount = await prisma.signer.count({
+      where: { documentId: id, status: 'pending' },
+    })
+
+    let completed = false
+
+    if (pendingCount === 0) {
+      // All signers have signed — generate the final PDF
+      const document = await prisma.document.findUnique({
+        where: { id },
+        select: {
+          fileUrl: true,
+          owner: { select: { name: true, email: true } },
+          signers: { select: { name: true } },
+          name: true,
+        },
+      })
+
+      if (document) {
+        const signedBytes = await buildSignedPdf(id, document.fileUrl)
+
+        if (signedBytes) {
+          const signedFilename = `${id}-signed.pdf`
+
+          let signedFileUrl: string
+          try {
+            signedFileUrl = await storeSignedPdf(signedFilename, signedBytes)
+          } catch (err) {
+            console.error('[sign] Failed to store signed PDF:', err)
+            signedFileUrl = signedFilename
+          }
+
+          await prisma.document.update({
+            where: { id },
+            data: {
+              signedFileUrl,
+              status: 'completed',
+              completedAt: new Date(),
+            },
+          })
+
+          // Notify the document owner that all parties have signed
+          const baseUrl = process.env.NEXTAUTH_URL ?? 'http://localhost:3000'
+          const ownerEmail = document.owner.email
+          if (ownerEmail) {
+            await sendCompletionNotification({
+              to: ownerEmail,
+              ownerName: document.owner.name ?? ownerEmail,
+              docName: document.name,
+              documentUrl: `${baseUrl}/documents/${id}`,
+              signerNames: document.signers.map((s) => s.name),
+            })
+          }
+
+          completed = true
+        }
+      }
+    }
+
+    // Audit log
+    await prisma.auditLog.create({
+      data: {
+        documentId: id,
+        action: 'document_signed',
+        actorEmail: signer.email,
+        ipAddress: ip,
+      },
+    })
+
+    return NextResponse.json({ success: true, completed })
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // MODE A: Owner self-sign (session-based — original behaviour)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  const session = await auth()
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  // Verify ownership
+  const document = await prisma.document.findFirst({
+    where: { id, ownerId: session.user.id },
+    select: { id: true, fileUrl: true },
+  })
+  if (!document) {
+    return NextResponse.json({ error: 'Document not found' }, { status: 404 })
+  }
+
+  // Update each field value in the DB
+  await Promise.all(
+    body.fields.map(({ fieldId, value }) =>
+      prisma.signatureField.updateMany({
+        where: { id: fieldId, documentId: id },
+        data: { value },
+      })
+    )
+  )
+
+  // Build value map for PDF embedding
+  const valueMap = new Map<string, string>(
+    body.fields.map(({ fieldId, value }) => [fieldId, value])
+  )
+
+  // Load the original PDF
+  const pdfBytes = await loadPdfBytes(document.fileUrl)
+  if (!pdfBytes) {
+    return NextResponse.json({ error: 'Original PDF not found' }, { status: 500 })
+  }
+
+  let pdfDoc: PDFDocument
+  try {
+    pdfDoc = await PDFDocument.load(new Uint8Array(pdfBytes))
+  } catch {
+    return NextResponse.json({ error: 'Failed to parse PDF' }, { status: 500 })
+  }
+
+  const helvetica = await pdfDoc.embedFont(StandardFonts.Helvetica)
+
+  const dbFields = await prisma.signatureField.findMany({
+    where: { documentId: id },
+  })
+
+  for (const field of dbFields) {
+    const value = valueMap.get(field.id)
+    if (!value) continue
+
+    const page = pdfDoc.getPage(field.pageNumber - 1)
+    const { width: pageW, height: pageH } = page.getSize()
+
+    const absX      = (field.x / 100) * pageW
+    const absWidth  = (field.width / 100) * pageW
+    const absHeight = (field.height / 100) * pageH
+    const absY      = pageH - (field.y / 100) * pageH - absHeight
+
+    if (field.type === 'signature' || field.type === 'initials') {
+      const base64Data = value.replace(/^data:image\/\w+;base64,/, '')
+      const imgBytes   = Buffer.from(base64Data, 'base64')
+
+      try {
+        let img
+        try {
+          img = await pdfDoc.embedPng(new Uint8Array(imgBytes))
+        } catch {
+          img = await pdfDoc.embedJpg(new Uint8Array(imgBytes))
+        }
+        page.drawImage(img, { x: absX, y: absY, width: absWidth, height: absHeight })
+      } catch (imgErr) {
+        console.error('[sign] Failed to embed image for field', field.id, imgErr)
+      }
+    } else {
+      const fontSize = Math.min(12, Math.max(8, absHeight * 0.55))
+      page.drawText(value, {
+        x: absX + 4,
+        y: absY + (absHeight - fontSize) / 2,
+        size: fontSize,
+        font: helvetica,
+        color: rgb(0, 0, 0),
+        maxWidth: absWidth - 8,
+      })
+    }
+  }
+
+  const signedBytes    = await pdfDoc.save()
+  const signedFilename = `${id}-signed.pdf`
+
+  let signedFileUrl: string
+  try {
+    signedFileUrl = await storeSignedPdf(signedFilename, signedBytes)
+  } catch (err) {
+    console.error('[sign] Failed to store signed PDF:', err)
+    return NextResponse.json({ error: 'Failed to save signed PDF' }, { status: 500 })
+  }
+
+  await prisma.document.update({
+    where: { id },
+    data: {
+      signedFileUrl,
+      status: 'completed',
+      completedAt: new Date(),
+    },
+  })
+
+  await prisma.auditLog.create({
+    data: {
+      documentId: id,
+      action: 'document_signed',
+      actorEmail: session.user.email ?? 'unknown',
+    },
+  })
+
+  return NextResponse.json({
+    signedFileUrl: `/api/documents/${id}/signed-file`,
+  })
+}

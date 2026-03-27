@@ -1,65 +1,55 @@
-import Image from "next/image";
+/**
+ * page.tsx — Landing Page (Server Component)
+ *
+ * This is the main page of SignVault. It composes all the landing page
+ * sections in order. Most sections are Client Components (they import
+ * Framer Motion), but this file itself stays a Server Component since
+ * it just imports and renders them.
+ *
+ * Page structure:
+ *   1. Navbar         — Fixed top bar with logo + dark/light toggle
+ *   2. HeroSection    — Main headline, CTA buttons, animated background
+ *   3. FeaturesSection — 4 feature cards in a grid
+ *   4. HowItWorksSection — 3-step process with connecting line
+ *   5. AdBanner       — Placeholder for Google AdSense
+ *   6. TrustSection   — Animated user counter + trust/security badges
+ *   7. Footer         — Logo, links, copyright
+ */
 
-export default function Home() {
+import { Navbar } from '@/components/Navbar'
+import { HeroSection } from '@/components/HeroSection'
+import { FeaturesSection } from '@/components/FeaturesSection'
+import { HowItWorksSection } from '@/components/HowItWorksSection'
+import { AdBanner } from '@/components/AdBanner'
+import { TrustSection } from '@/components/TrustSection'
+import { Footer } from '@/components/Footer'
+
+export default function HomePage() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+    <>
+      {/* Fixed navbar — sits on top of everything */}
+      <Navbar />
+
+      {/* Main content — flows naturally down the page */}
+      <main>
+        {/* 1. Hero — the first thing visitors see */}
+        <HeroSection />
+
+        {/* 2. Features — what SignVault can do */}
+        <FeaturesSection />
+
+        {/* 3. How It Works — 3-step explainer */}
+        <HowItWorksSection />
+
+        {/* 4. Ad Banner — horizontal ad unit placeholder */}
+        <AdBanner />
+
+        {/* 5. Trust — user counter and security badges */}
+        <TrustSection />
       </main>
-    </div>
-  );
+
+      {/* Footer */}
+      <Footer />
+    </>
+  )
 }
