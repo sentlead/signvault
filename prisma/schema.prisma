@@ -76,6 +76,8 @@ model User {
   usageRecords    UsageRecord[]
   templates       Template[]
   bulkSends       BulkSend[]
+  ownedTeam       Team?        @relation("TeamOwner")
+  teamMemberships TeamMember[]
 }
 
 // Tracks how many documents a user has created each calendar month
@@ -198,6 +200,52 @@ model BulkSend {
 
   owner     User       @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   documents Document[]
+}
+
+// A team workspace — created by a Business-plan user who becomes the owner.
+// Other users (any plan) can be invited as members.
+model Team {
+  id        String   @id @default(cuid())
+  name      String
+  // The Business user who created and owns this team (unique: one team per owner)
+  ownerId   String   @unique
+  createdAt DateTime @default(now())
+
+  owner       User             @relation("TeamOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members     TeamMember[]
+  invitations TeamInvitation[]
+}
+
+// Links a User to a Team with a role: 'owner' | 'member'
+model TeamMember {
+  id       String   @id @default(cuid())
+  teamId   String
+  userId   String
+  // 'owner' = the team creator (only one), 'member' = everyone else
+  role     String   @default("member")
+  joinedAt DateTime @default(now())
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // A user can only appear once in a given team
+  @@unique([teamId, userId])
+}
+
+// A pending invitation to join a team — created when owner invites someone by email.
+// The invite link embeds `token` so the recipient can accept without knowing the team ID.
+model TeamInvitation {
+  id        String   @id @default(cuid())
+  teamId    String
+  // The email address this invite was sent to
+  email     String
+  // Unique token embedded in the invitation link
+  token     String   @unique @default(cuid())
+  // Invitation expires after 7 days
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
 }
 
 // Stores user's saved signature images (base64 PNG data) for reuse

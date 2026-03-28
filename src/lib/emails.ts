@@ -424,3 +424,86 @@ export async function sendDocumentExpiredNotification({
     console.error('[emails] sendDocumentExpiredNotification failed:', error)
   }
 }
+
+/**
+ * Send a team invitation email.
+ * Called when a team owner invites someone to join their team.
+ *
+ * @param to         Recipient's email address
+ * @param ownerName  Name of the team owner who sent the invite
+ * @param teamName   Name of the team
+ * @param acceptUrl  The URL the recipient clicks to accept the invitation
+ */
+export async function sendTeamInvitation({
+  to,
+  ownerName,
+  teamName,
+  acceptUrl,
+}: {
+  to: string
+  ownerName: string
+  teamName: string
+  acceptUrl: string
+}): Promise<void> {
+  const subject = `${ownerName} invited you to join "${teamName}" on SignVault`
+
+  const bodyHtml = `
+    <h1 style="margin:0 0 8px;font-size:24px;font-weight:700;color:#111827;">
+      You&apos;re Invited!
+    </h1>
+    <p style="margin:0 0 20px;font-size:15px;color:#6b7280;line-height:1.6;">
+      Hi there,
+    </p>
+    <p style="margin:0 0 20px;font-size:15px;color:#374151;line-height:1.6;">
+      <strong>${ownerName}</strong> has invited you to join their team on SignVault:
+    </p>
+
+    <!-- Team name box -->
+    <div style="background-color:#f0f0ff;border-left:4px solid #6366f1;border-radius:6px;padding:14px 18px;margin:0 0 24px;">
+      <p style="margin:0;font-size:16px;font-weight:700;color:#111827;">👥 ${teamName}</p>
+      <p style="margin:4px 0 0;font-size:13px;color:#4338ca;">Team workspace on SignVault</p>
+    </div>
+
+    <p style="margin:0 0 8px;font-size:14px;color:#6b7280;">
+      Click the button below to accept this invitation:
+    </p>
+
+    ${ctaButton('Accept Invitation →', acceptUrl)}
+
+    <p style="margin:16px 0 0;font-size:12px;color:#9ca3af;line-height:1.6;">
+      This invitation expires in 7 days.
+      If you don&apos;t have a SignVault account yet, you&apos;ll be asked to sign up first.
+      <br/>If you did not expect this invitation, you can safely ignore this email.
+    </p>
+
+    <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0 16px;" />
+
+    <p style="margin:0;font-size:13px;color:#9ca3af;">
+      Having trouble? Copy and paste this URL into your browser:
+      <br/><span style="word-break:break-all;color:#6366f1;">${acceptUrl}</span>
+    </p>
+  `
+
+  const html = emailShell(subject, bodyHtml)
+  const resend = getResend()
+
+  if (!resend) {
+    console.log('\n[SignVault Email] TEAM INVITATION')
+    console.log('To:', to)
+    console.log('Subject:', subject)
+    console.log('Accept URL:', acceptUrl)
+    console.log('(Set RESEND_API_KEY to send real emails)\n')
+    return
+  }
+
+  const { error } = await resend.emails.send({
+    from: FROM_ADDRESS,
+    to,
+    subject,
+    html,
+  })
+
+  if (error) {
+    console.error('[emails] sendTeamInvitation failed:', error)
+  }
+}

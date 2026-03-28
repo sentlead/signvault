@@ -30,6 +30,7 @@ import {
   X,
   CreditCard,
   SendHorizonal,
+  Users,
 } from 'lucide-react'
 import { SignVaultLogo } from '@/components/ui/SignVaultLogo'
 
@@ -76,6 +77,12 @@ const navItems = [
     label: 'Bulk Send',
     href: '/bulk-send',
     icon: SendHorizonal,
+    badge: null,
+  },
+  {
+    label: 'My Team',
+    href: '/team',
+    icon: Users,
     badge: null,
   },
   {
