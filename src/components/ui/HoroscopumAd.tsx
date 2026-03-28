@@ -34,7 +34,7 @@ const CONSTELLATION_DOTS = [
 export function HoroscopumAd() {
   return (
     <Link
-      href="https://horoscopum.com"
+      href="https://horoscopum.vercel.app/"
       target="_blank"
       rel="noopener noreferrer"
       aria-label="Advertisement: Discover your destiny at horoscopum.com"
