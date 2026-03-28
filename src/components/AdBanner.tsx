@@ -6,7 +6,7 @@
  */
 
 import { motion } from 'framer-motion'
-import { HoroscopumAd } from '@/components/ui/HoroscopumAd'
+import { HoroscopumAdBanner } from '@/components/ui/HoroscopumAdBanner'
 
 export function AdBanner() {
   return (
@@ -22,7 +22,7 @@ export function AdBanner() {
           viewport={{ once: true }}
           transition={{ duration: 0.5 }}
         >
-          <HoroscopumAd />
+          <HoroscopumAdBanner />
         </motion.div>
       </div>
     </section>

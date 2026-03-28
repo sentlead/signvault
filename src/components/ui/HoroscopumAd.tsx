@@ -1,42 +1,35 @@
 'use client'
 
 /**
- * HoroscopumAd.tsx — Animated leaderboard banner for horoscopum.com
+ * HoroscopumAd.tsx — Compact vertical ad card for horoscopum.com
  *
- * Full-width horizontal format (replaces the AdSense placeholder).
- * Deep space aesthetic with:
- *   - Twinkling star field (staggered opacity loops)
- *   - Shooting star that streaks across every ~6s
- *   - Softly pulsing moon glow
- *   - Shimmer sweep on the CTA button
- *   - Hover lift on the whole card
+ * Designed for the dashboard sidebar slot: 180px wide × 150px tall.
+ * Animation: a star orbits the moon in a slow circle, stars twinkle,
+ * and a constellation slowly draws and redraws itself.
  */
 
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 
-// ── Star field config ─────────────────────────────────────────────────────────
 const STARS = [
-  { x:  4, y: 20, r: 1.5, dur: 2.1, delay: 0.0 },
-  { x: 10, y: 65, r: 1.0, dur: 3.4, delay: 0.7 },
-  { x: 16, y: 35, r: 2.0, dur: 2.8, delay: 1.2 },
-  { x: 22, y: 78, r: 1.2, dur: 2.3, delay: 0.3 },
-  { x: 28, y: 15, r: 1.0, dur: 3.1, delay: 1.8 },
-  { x: 34, y: 55, r: 1.5, dur: 2.6, delay: 0.5 },
-  { x: 40, y: 30, r: 1.0, dur: 3.8, delay: 2.1 },
-  { x: 47, y: 70, r: 2.0, dur: 2.2, delay: 0.9 },
-  { x: 54, y: 18, r: 1.2, dur: 3.5, delay: 1.5 },
-  { x: 60, y: 82, r: 1.0, dur: 2.9, delay: 0.2 },
-  { x: 66, y: 42, r: 1.8, dur: 2.4, delay: 1.1 },
-  { x: 72, y: 58, r: 1.0, dur: 3.2, delay: 0.6 },
-  { x: 78, y: 25, r: 1.5, dur: 2.7, delay: 1.9 },
-  { x: 84, y: 72, r: 1.2, dur: 2.0, delay: 0.4 },
-  { x: 90, y: 38, r: 1.0, dur: 3.6, delay: 1.3 },
-  { x: 95, y: 60, r: 1.8, dur: 2.5, delay: 0.8 },
+  { x: 10, y: 12, r: 1.2, dur: 2.4, delay: 0.0 },
+  { x: 82, y: 18, r: 1.0, dur: 3.1, delay: 0.6 },
+  { x: 20, y: 72, r: 1.5, dur: 2.8, delay: 1.1 },
+  { x: 88, y: 65, r: 1.0, dur: 2.2, delay: 0.3 },
+  { x: 15, y: 44, r: 0.8, dur: 3.5, delay: 1.8 },
+  { x: 76, y: 42, r: 1.2, dur: 2.6, delay: 0.9 },
+  { x: 50, y:  8, r: 0.9, dur: 3.0, delay: 1.4 },
+  { x: 92, y: 85, r: 1.0, dur: 2.3, delay: 0.5 },
 ]
 
-// Zodiac symbols that drift slowly across the banner
-const ZODIAC = ['♈', '♉', '♊', '♋', '♌', '♍', '♎', '♏', '♐', '♑', '♒', '♓']
+// Constellation: 5 dots connected by lines (a simple dipper shape)
+const CONSTELLATION_DOTS = [
+  { cx: 30, cy: 52 },
+  { cx: 46, cy: 42 },
+  { cx: 62, cy: 46 },
+  { cx: 74, cy: 38 },
+  { cx: 86, cy: 44 },
+]
 
 export function HoroscopumAd() {
   return (
@@ -46,173 +39,141 @@ export function HoroscopumAd() {
       rel="noopener noreferrer"
       aria-label="Advertisement: Discover your destiny at horoscopum.com"
       className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-400
-                 rounded-[12px] overflow-hidden"
+                 rounded-[8px] overflow-hidden"
     >
       <motion.div
-        whileHover={{ scale: 1.01, y: -2 }}
-        transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-        className="relative w-full overflow-hidden rounded-[12px] select-none"
+        whileHover={{ scale: 1.03 }}
+        transition={{ type: 'spring', stiffness: 300, damping: 22 }}
+        className="relative flex flex-col items-center justify-between
+                   rounded-[8px] overflow-hidden select-none"
         style={{
-          height: 90,
-          background: 'linear-gradient(100deg, #0d0626 0%, #1e1040 35%, #2d1b69 65%, #1a0a3c 100%)',
+          width: 180,
+          height: 150,
+          background: 'linear-gradient(160deg, #0d0626 0%, #1e1040 45%, #2d1b69 100%)',
         }}
       >
 
-        {/* ── Twinkling star field ────────────────────────────────────────── */}
+        {/* ── Twinkling stars ───────────────────────────────────────────── */}
         <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
           {STARS.map((s, i) => (
             <motion.div
               key={i}
               className="absolute rounded-full bg-white"
-              style={{
-                left:   `${s.x}%`,
-                top:    `${s.y}%`,
-                width:  s.r * 2,
-                height: s.r * 2,
-              }}
-              animate={{ opacity: [0.15, 0.9, 0.15], scale: [1, 1.3, 1] }}
-              transition={{
-                duration: s.dur,
-                delay: s.delay,
-                repeat: Infinity,
-                ease: 'easeInOut',
-              }}
+              style={{ left: `${s.x}%`, top: `${s.y}%`, width: s.r * 2, height: s.r * 2 }}
+              animate={{ opacity: [0.1, 0.85, 0.1], scale: [1, 1.4, 1] }}
+              transition={{ duration: s.dur, delay: s.delay, repeat: Infinity, ease: 'easeInOut' }}
             />
           ))}
         </div>
 
-        {/* ── Shooting star ───────────────────────────────────────────────── */}
-        <motion.div
-          className="absolute pointer-events-none"
-          style={{ top: '22%', left: 0 }}
-          animate={{
-            x:       ['-5%', '110%'],
-            opacity: [0, 1, 1, 0],
-            scaleX:  [0.5, 1, 1, 0.5],
-          }}
-          transition={{
-            duration: 1.2,
-            delay: 1.5,
-            repeat: Infinity,
-            repeatDelay: 5.5,
-            ease: 'easeIn',
-          }}
-        >
-          <div
-            className="rounded-full"
-            style={{
-              width: 60,
-              height: 1.5,
-              background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.9), transparent)',
-              boxShadow: '0 0 6px 1px rgba(200,180,255,0.6)',
-            }}
-          />
-        </motion.div>
-
-        {/* ── Drifting zodiac symbols ─────────────────────────────────────── */}
-        {ZODIAC.slice(0, 5).map((symbol, i) => (
-          <motion.span
-            key={i}
-            className="absolute text-purple-300/20 font-serif pointer-events-none"
-            style={{
-              fontSize: 18 + (i % 3) * 4,
-              left: `${8 + i * 18}%`,
-              top:  i % 2 === 0 ? '8%' : '55%',
-            }}
-            animate={{ y: [0, -6, 0], opacity: [0.15, 0.35, 0.15] }}
-            transition={{
-              duration: 4 + i * 0.7,
-              delay: i * 0.5,
-              repeat: Infinity,
-              ease: 'easeInOut',
-            }}
-          >
-            {symbol}
-          </motion.span>
-        ))}
-
-        {/* ── Main content ────────────────────────────────────────────────── */}
-        <div className="relative h-full flex items-center gap-5 px-6 z-10">
-
-          {/* Moon with pulsing glow */}
-          <div className="relative flex-shrink-0">
-            <motion.div
-              className="absolute inset-0 rounded-full"
-              style={{
-                background: 'radial-gradient(circle, rgba(167,139,250,0.4) 0%, transparent 70%)',
-                width: 48,
-                height: 48,
-                top: '50%',
-                left: '50%',
-                transform: 'translate(-50%, -50%)',
-              }}
-              animate={{ scale: [1, 1.5, 1], opacity: [0.4, 0.7, 0.4] }}
-              transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
-            />
-            <motion.span
-              className="relative text-3xl leading-none"
-              animate={{ rotate: [0, 8, -4, 0] }}
-              transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
-              role="img"
-              aria-label="crescent moon"
-            >
-              🌙
-            </motion.span>
-          </div>
-
-          {/* Brand copy */}
-          <div className="flex-shrink-0">
-            <p className="text-white font-bold text-lg leading-tight tracking-tight">
-              horoscopum
-              <span className="text-purple-300">.com</span>
-            </p>
-            <p className="text-purple-200 text-xs leading-snug">
-              ✦ Discover what the stars have in store for you
-            </p>
-          </div>
-
-          {/* Divider */}
-          <div className="hidden sm:block w-px h-10 bg-purple-500/30 flex-shrink-0 mx-1" />
-
-          {/* Star signs preview */}
-          <div className="hidden md:flex items-center gap-3 flex-shrink-0">
-            {['♈ Aries', '♍ Virgo', '♓ Pisces'].map((sign) => (
-              <span key={sign} className="text-purple-200/70 text-xs">
-                {sign}
-              </span>
+        {/* ── Constellation (SVG) ───────────────────────────────────────── */}
+        <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
+          <svg width="180" height="150" viewBox="0 0 180 150" fill="none">
+            {/* Lines between dots */}
+            {CONSTELLATION_DOTS.slice(0, -1).map((dot, i) => {
+              const next = CONSTELLATION_DOTS[i + 1]
+              return (
+                <motion.line
+                  key={i}
+                  x1={dot.cx} y1={dot.cy}
+                  x2={next.cx} y2={next.cy}
+                  stroke="rgba(196,181,253,0.35)"
+                  strokeWidth="0.8"
+                  initial={{ pathLength: 0, opacity: 0 }}
+                  animate={{ pathLength: [0, 1, 1, 0], opacity: [0, 0.6, 0.6, 0] }}
+                  transition={{
+                    duration: 8,
+                    delay: i * 0.4,
+                    repeat: Infinity,
+                    repeatDelay: 3,
+                    ease: 'easeInOut',
+                  }}
+                />
+              )
+            })}
+            {/* Dots */}
+            {CONSTELLATION_DOTS.map((dot, i) => (
+              <motion.circle
+                key={i}
+                cx={dot.cx} cy={dot.cy} r={1.5}
+                fill="rgba(216,180,254,0.7)"
+                animate={{ opacity: [0.3, 1, 0.3] }}
+                transition={{
+                  duration: 2.5,
+                  delay: i * 0.4,
+                  repeat: Infinity,
+                  ease: 'easeInOut',
+                }}
+              />
             ))}
-            <span className="text-purple-400/50 text-xs">+9 more</span>
+          </svg>
+        </div>
+
+        {/* ── Moon + orbiting star ──────────────────────────────────────── */}
+        <div className="relative flex items-center justify-center mt-5 flex-shrink-0">
+          {/* Glow behind moon */}
+          <motion.div
+            className="absolute rounded-full"
+            style={{
+              width: 52,
+              height: 52,
+              background: 'radial-gradient(circle, rgba(167,139,250,0.45) 0%, transparent 70%)',
+            }}
+            animate={{ scale: [1, 1.5, 1], opacity: [0.5, 0.8, 0.5] }}
+            transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+          />
+          {/* Moon emoji */}
+          <motion.span
+            className="relative text-[28px] leading-none z-10"
+            animate={{ rotate: [0, 6, -3, 0] }}
+            transition={{ duration: 7, repeat: Infinity, ease: 'easeInOut' }}
+            role="img"
+            aria-label="crescent moon"
+          >
+            🌙
+          </motion.span>
+          {/* Orbiting sparkle */}
+          <motion.span
+            className="absolute text-[10px] leading-none pointer-events-none"
+            animate={{ rotate: 360 }}
+            transition={{ duration: 5, repeat: Infinity, ease: 'linear' }}
+            style={{ transformOrigin: '50% 50%', marginLeft: 28 }}
+          >
+            ✦
+          </motion.span>
+        </div>
+
+        {/* ── Brand name ────────────────────────────────────────────────── */}
+        <div className="text-center mt-1 flex-shrink-0">
+          <p className="text-white font-bold text-sm tracking-tight leading-tight">
+            horoscopum
+            <span className="text-purple-300">.com</span>
+          </p>
+          <p className="text-purple-200/80 text-[10px] mt-0.5">
+            Discover your destiny
+          </p>
+        </div>
+
+        {/* ── CTA ───────────────────────────────────────────────────────── */}
+        <div className="mb-4 relative overflow-hidden rounded-full flex-shrink-0">
+          <div
+            className="px-3 py-1 rounded-full text-[10px] font-semibold text-white"
+            style={{ background: 'linear-gradient(135deg, #7c3aed, #a855f7)' }}
+          >
+            Read your horoscope →
           </div>
-
-          {/* Spacer */}
-          <div className="flex-1" />
-
-          {/* CTA button with shimmer */}
-          <div className="relative flex-shrink-0 overflow-hidden rounded-full">
-            <div
-              className="px-5 py-2 rounded-full text-sm font-semibold text-white"
-              style={{
-                background: 'linear-gradient(135deg, #7c3aed, #a855f7)',
-                boxShadow: '0 0 16px rgba(139,92,246,0.5)',
-              }}
-            >
-              Read your horoscope →
-            </div>
-            {/* Shimmer sweep */}
-            <motion.div
-              className="absolute inset-0 rounded-full pointer-events-none"
-              style={{
-                background: 'linear-gradient(105deg, transparent 30%, rgba(255,255,255,0.25) 50%, transparent 70%)',
-              }}
-              animate={{ x: ['-100%', '100%'] }}
-              transition={{ duration: 1.8, repeat: Infinity, repeatDelay: 2.5, ease: 'easeInOut' }}
-            />
-          </div>
-
+          <motion.div
+            className="absolute inset-0 rounded-full pointer-events-none"
+            style={{
+              background: 'linear-gradient(105deg, transparent 30%, rgba(255,255,255,0.3) 50%, transparent 70%)',
+            }}
+            animate={{ x: ['-100%', '100%'] }}
+            transition={{ duration: 1.6, repeat: Infinity, repeatDelay: 3, ease: 'easeInOut' }}
+          />
         </div>
 
         {/* Ad label */}
-        <p className="absolute bottom-1 right-2 text-[8px] text-purple-400/50 pointer-events-none">
+        <p className="absolute bottom-1 right-1.5 text-[7px] text-purple-400/50 pointer-events-none">
           Ad
         </p>
 
