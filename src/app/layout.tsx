@@ -12,15 +12,45 @@
  */
 
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
+import { Inter, Dancing_Script, Pacifico, Caveat, Sacramento } from 'next/font/google'
 import { Providers } from './providers'
 import './globals.css'
 
 // Load Inter font — subsets to Latin for performance
 const inter = Inter({
   subsets: ['latin'],
-  variable: '--font-inter',   // CSS variable used in globals.css @theme
-  display: 'swap',            // Show fallback font while Inter loads
+  variable: '--font-inter',
+  display: 'swap',
+})
+
+// Signature fonts — self-hosted via next/font, not preloaded (only needed in SignatureModal)
+const dancingScript = Dancing_Script({
+  subsets: ['latin'],
+  weight: '700',
+  variable: '--font-dancing-script',
+  preload: false,
+  display: 'swap',
+})
+const pacifico = Pacifico({
+  subsets: ['latin'],
+  weight: '400',
+  variable: '--font-pacifico',
+  preload: false,
+  display: 'swap',
+})
+const caveat = Caveat({
+  subsets: ['latin'],
+  weight: '700',
+  variable: '--font-caveat',
+  preload: false,
+  display: 'swap',
+})
+const sacramento = Sacramento({
+  subsets: ['latin'],
+  weight: '400',
+  variable: '--font-sacramento',
+  preload: false,
+  display: 'swap',
 })
 
 export const metadata: Metadata = {
@@ -43,7 +73,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={inter.variable}
+      className={`${inter.variable} ${dancingScript.variable} ${pacifico.variable} ${caveat.variable} ${sacramento.variable}`}
       suppressHydrationWarning // Required by next-themes to avoid SSR mismatch
     >
       <body className="min-h-screen antialiased bg-sv-bg dark:bg-sv-dark-bg text-sv-text dark:text-sv-dark-text">

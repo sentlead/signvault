@@ -4,7 +4,6 @@
   Custom design tokens are defined in the @theme block below.
 */
 
-@import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Pacifico&family=Caveat:wght@700&family=Sacramento&display=swap');
 @import "tailwindcss";
 
 /* ─── Marching ants animation (used on the field draw ghost preview) ─────────

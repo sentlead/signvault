@@ -33,13 +33,13 @@ interface SignatureModalProps {
   onClose: () => void
 }
 
-// ── Handwriting fonts (loaded via Google Fonts in globals.css) ─────────────────
+// ── Handwriting fonts (self-hosted via next/font, injected as CSS variables) ──
 
 const HANDWRITING_FONTS = [
-  { id: 'dancing', family: "'Dancing Script', cursive", label: 'Dancing Script' },
-  { id: 'pacifico', family: "'Pacifico', cursive",     label: 'Pacifico' },
-  { id: 'caveat',   family: "'Caveat', cursive",        label: 'Caveat' },
-  { id: 'sacr',     family: "'Sacramento', cursive",    label: 'Sacramento' },
+  { id: 'dancing', family: 'var(--font-dancing-script), cursive', label: 'Dancing Script' },
+  { id: 'pacifico', family: 'var(--font-pacifico), cursive',      label: 'Pacifico' },
+  { id: 'caveat',   family: 'var(--font-caveat), cursive',         label: 'Caveat' },
+  { id: 'sacr',     family: 'var(--font-sacramento), cursive',     label: 'Sacramento' },
 ] as const
 
 // ── Sub-component: Draw tab ────────────────────────────────────────────────────
