@@ -124,6 +124,9 @@ model Signer {
   status     String    @default("pending")
   signedAt   DateTime?
   signedIp   String?
+  // Signing order — 0 = first to sign, 1 = second, etc.
+  // Signers with the same order value are emailed simultaneously.
+  order      Int       @default(0)
 
   document Document        @relation(fields: [documentId], references: [id], onDelete: Cascade)
   fields   SignatureField[]

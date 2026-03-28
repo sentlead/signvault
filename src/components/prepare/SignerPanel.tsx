@@ -140,50 +140,66 @@ export function SignerPanel({
 
       {/* ── Signer list ─────────────────────────────────────────────────── */}
       {signers.length > 0 ? (
-        <ul className="space-y-2 mb-3">
-          {signers.map((signer, index) => {
-            const color = getSignerColor(index)
-            return (
-              <li
-                key={signer.id}
-                className="
-                  flex items-center gap-2 px-3 py-2
-                  rounded-[var(--radius-button)]
-                  bg-sv-bg dark:bg-sv-dark-bg
-                  border border-sv-border dark:border-sv-dark-border
-                "
-              >
-                {/* Color dot */}
-                <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${color.dot}`} />
-
-                {/* Name + email */}
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-sv-text dark:text-sv-dark-text truncate leading-none mb-0.5">
-                    {signer.name}
-                  </p>
-                  <p className="text-xs text-sv-secondary dark:text-sv-dark-secondary truncate leading-none">
-                    {signer.email}
-                  </p>
-                </div>
-
-                {/* Remove button */}
-                <button
-                  onClick={() => onRemoveSigner(signer.id)}
+        <>
+          <ul className="space-y-2 mb-2">
+            {signers.map((signer, index) => {
+              const color = getSignerColor(index)
+              return (
+                <li
+                  key={signer.id}
                   className="
-                    w-5 h-5 flex-shrink-0 flex items-center justify-center rounded-full
-                    text-sv-secondary dark:text-sv-dark-secondary
-                    hover:bg-red-100 dark:hover:bg-red-900/30
-                    hover:text-red-600 dark:hover:text-red-400
-                    transition-colors
+                    flex items-center gap-2 px-3 py-2
+                    rounded-[var(--radius-button)]
+                    bg-sv-bg dark:bg-sv-dark-bg
+                    border border-sv-border dark:border-sv-dark-border
                   "
-                  aria-label={`Remove ${signer.name}`}
                 >
-                  <X className="w-3 h-3" />
-                </button>
-              </li>
-            )
-          })}
-        </ul>
+                  {/* Signing order badge — shows which turn this signer signs */}
+                  <span className="w-5 h-5 flex-shrink-0 rounded-full bg-sv-border dark:bg-sv-dark-border
+                                   text-xs font-bold text-sv-secondary dark:text-sv-dark-secondary
+                                   flex items-center justify-center">
+                    {index + 1}
+                  </span>
+
+                  {/* Color dot */}
+                  <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${color.dot}`} />
+
+                  {/* Name + email */}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium text-sv-text dark:text-sv-dark-text truncate leading-none mb-0.5">
+                      {signer.name}
+                    </p>
+                    <p className="text-xs text-sv-secondary dark:text-sv-dark-secondary truncate leading-none">
+                      {signer.email}
+                    </p>
+                  </div>
+
+                  {/* Remove button */}
+                  <button
+                    onClick={() => onRemoveSigner(signer.id)}
+                    className="
+                      w-5 h-5 flex-shrink-0 flex items-center justify-center rounded-full
+                      text-sv-secondary dark:text-sv-dark-secondary
+                      hover:bg-red-100 dark:hover:bg-red-900/30
+                      hover:text-red-600 dark:hover:text-red-400
+                      transition-colors
+                    "
+                    aria-label={`Remove ${signer.name}`}
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
+
+          {/* Sequential signing hint — only shown when there are 2+ signers */}
+          {signers.length >= 2 && (
+            <p className="text-xs text-sv-secondary dark:text-sv-dark-secondary mb-3 leading-relaxed">
+              Signers will be emailed in order: 1st signer first, then 2nd after they sign, and so on.
+            </p>
+          )}
+        </>
       ) : (
         // Empty state hint
         <div className="

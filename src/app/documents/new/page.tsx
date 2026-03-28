@@ -34,8 +34,9 @@ import {
 } from 'lucide-react'
 import { toast } from '@/lib/toast'
 
-// Max file size: 10 MB (the server enforces the real per-plan limit)
-const MAX_SIZE_BYTES = 10 * 1024 * 1024
+// Max size shown to the user — the server enforces the real per-plan limit.
+// 50 MB gives room for large images/docx before conversion.
+const MAX_SIZE_BYTES = 50 * 1024 * 1024
 
 function formatBytes(bytes: number): string {
   if (bytes >= 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)} MB`
@@ -268,9 +269,9 @@ export default function NewDocumentPage() {
     if (rejectedFiles.length > 0) {
       const firstError = rejectedFiles[0]?.errors[0]
       if (firstError?.code === 'file-too-large') {
-        setUploadError('File is too large. Maximum size is 10 MB.')
+        setUploadError('File is too large. Maximum size is 50 MB.')
       } else if (firstError?.code === 'file-invalid-type') {
-        setUploadError('Only PDF files are accepted. Please select a .pdf file.')
+        setUploadError('Accepted formats: PDF, JPG, PNG, or DOCX.')
       } else {
         setUploadError('File could not be added. Please try again.')
       }
@@ -281,7 +282,12 @@ export default function NewDocumentPage() {
 
   const { getRootProps, getInputProps, isDragActive, isDragReject } = useDropzone({
     onDrop,
-    accept: { 'application/pdf': ['.pdf'] },
+    accept: {
+      'application/pdf': ['.pdf'],
+      'image/jpeg': ['.jpg', '.jpeg'],
+      'image/png': ['.png'],
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
+    },
     maxSize: MAX_SIZE_BYTES,
     multiple: false,
   })
@@ -407,12 +413,12 @@ export default function NewDocumentPage() {
             {isDragReject ? (
               <>
                 <AlertCircle className="w-10 h-10 text-red-400" />
-                <p className="text-sm font-medium text-red-500">Only PDF files are accepted</p>
+                <p className="text-sm font-medium text-red-500">Accepted formats: PDF, JPG, PNG, or DOCX</p>
               </>
             ) : isDragActive ? (
               <>
                 <UploadCloud className="w-10 h-10 text-sv-primary dark:text-sv-dark-primary animate-bounce" />
-                <p className="text-sm font-medium text-sv-primary dark:text-sv-dark-primary">Drop your PDF here</p>
+                <p className="text-sm font-medium text-sv-primary dark:text-sv-dark-primary">Drop your file here</p>
               </>
             ) : file ? (
               <>
@@ -424,12 +430,13 @@ export default function NewDocumentPage() {
               <>
                 <UploadCloud className="w-10 h-10 text-sv-secondary dark:text-sv-dark-secondary" />
                 <div>
-                  <p className="text-sm font-medium text-sv-text dark:text-sv-dark-text">Drag & drop your PDF here</p>
+                  <p className="text-sm font-medium text-sv-text dark:text-sv-dark-text">Drag & drop your file here</p>
                   <p className="text-xs text-sv-secondary dark:text-sv-dark-secondary mt-1">
                     or <span className="text-sv-primary dark:text-sv-dark-primary underline underline-offset-2">browse files</span>
                   </p>
                 </div>
-                <p className="text-xs text-sv-secondary dark:text-sv-dark-secondary">PDF only · max 10 MB</p>
+                <p className="text-xs text-sv-secondary dark:text-sv-dark-secondary">PDF, JPG, PNG, or DOCX · max 50 MB</p>
+                <p className="text-xs text-sv-secondary dark:text-sv-dark-secondary">Images and Word documents are converted to PDF automatically.</p>
               </>
             )}
           </div>

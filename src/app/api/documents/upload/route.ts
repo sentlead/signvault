@@ -17,6 +17,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { checkDocumentLimit, checkFileSizeLimit, incrementUsage } from '@/lib/usage'
+import { imageToPdf, docxToPdf } from '@/lib/convert-to-pdf'
 import { v4 as uuidv4 } from 'uuid'
 
 export async function POST(req: NextRequest) {
@@ -56,10 +57,18 @@ export async function POST(req: NextRequest) {
   const uploadedFile = fileEntry
 
   // ── 3. Validation ──────────────────────────────────────────────────────
-  // Check MIME type
-  if (uploadedFile.type !== 'application/pdf') {
+  // Accepted MIME types — PDF, JPG/PNG images, and Word .docx files
+  const ACCEPTED_TYPES = new Set([
+    'application/pdf',
+    'image/jpeg',
+    'image/jpg',
+    'image/png',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
+  ])
+
+  if (!ACCEPTED_TYPES.has(uploadedFile.type)) {
     return NextResponse.json(
-      { error: 'Only PDF files are accepted' },
+      { error: 'Accepted formats: PDF, JPG, PNG, or DOCX.' },
       { status: 422 }
     )
   }
@@ -76,10 +85,32 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  // ── 4. Store the file ──────────────────────────────────────────────────
-  const uniqueFilename = `${uuidv4()}.pdf`
+  // ── 4. Convert to PDF if needed, then store ────────────────────────────
   const arrayBuffer = await uploadedFile.arrayBuffer()
   const buffer = Buffer.from(arrayBuffer)
+
+  // Convert non-PDF formats to PDF before storing
+  // Typed as NodeJS.ArrayBufferView to accept both Buffer<ArrayBuffer> and Buffer<ArrayBufferLike>
+  let finalBuffer: Buffer = buffer as Buffer
+  const finalFilename = `${uuidv4()}.pdf`
+  let documentName = uploadedFile.name
+
+  if (uploadedFile.type !== 'application/pdf') {
+    try {
+      if (uploadedFile.type.startsWith('image/')) {
+        // Embed the image into an A4 PDF page
+        finalBuffer = await imageToPdf(buffer, uploadedFile.type)
+      } else if (uploadedFile.type.includes('wordprocessingml')) {
+        // Extract text from .docx and lay it out in a PDF
+        finalBuffer = await docxToPdf(buffer)
+      }
+      // Strip the original extension and use .pdf for the stored name
+      documentName = uploadedFile.name.replace(/\.(docx?|jpe?g|png)$/i, '.pdf')
+    } catch (convErr) {
+      console.error('[upload] conversion failed:', convErr)
+      return NextResponse.json({ error: 'Could not convert file to PDF.' }, { status: 422 })
+    }
+  }
 
   let fileUrl: string
 
@@ -87,7 +118,7 @@ export async function POST(req: NextRequest) {
     if (process.env.BLOB_READ_WRITE_TOKEN) {
       // Production / Vercel preview: upload to Vercel Blob
       const { put } = await import('@vercel/blob')
-      const blob = await put(uniqueFilename, buffer, {
+      const blob = await put(finalFilename, finalBuffer, {
         access: 'private',
         contentType: 'application/pdf',
       })
@@ -99,9 +130,9 @@ export async function POST(req: NextRequest) {
       // The comment below prevents Turbopack from tracing the entire project directory
       const uploadsDir = path.join(/*turbopackIgnore: true*/ process.cwd(), 'uploads')
       await fs.promises.mkdir(uploadsDir, { recursive: true })
-      const filePath = path.join(uploadsDir, uniqueFilename)
-      await fs.promises.writeFile(filePath, buffer)
-      fileUrl = `uploads/${uniqueFilename}`
+      const filePath = path.join(uploadsDir, finalFilename)
+      await fs.promises.writeFile(filePath, finalBuffer)
+      fileUrl = `uploads/${finalFilename}`
     }
   } catch {
     return NextResponse.json({ error: 'Failed to store file' }, { status: 500 })
@@ -112,7 +143,7 @@ export async function POST(req: NextRequest) {
   try {
     document = await prisma.document.create({
       data: {
-        name: uploadedFile.name,
+        name: documentName,
         ownerId: session.user.id,
         fileUrl,
         status: 'draft',

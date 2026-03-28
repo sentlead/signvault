@@ -121,15 +121,17 @@ export async function POST(
 
     // ── 6. Create Signer records ─────────────────────────────────────────
     // We create them one by one so we can get each ID before creating the JWT.
-    const newSigners: Array<{ id: string; name: string; email: string; token: string }> = []
+    // The loop index becomes the signer's `order` field for sequential signing.
+    const newSigners: Array<{ id: string; name: string; email: string; token: string; order: number }> = []
 
-    for (const signerInput of signers) {
+    for (const [index, signerInput] of signers.entries()) {
       const signer = await tx.signer.create({
         data: {
           documentId: id,
           name: signerInput.name,
           email: signerInput.email,
           status: 'pending',
+          order: index,  // 0 = first signer, 1 = second, etc.
         },
         select: { id: true, name: true, email: true },
       })
@@ -143,7 +145,7 @@ export async function POST(
         data: { token: jwtToken },
       })
 
-      newSigners.push({ ...signer, token: jwtToken })
+      newSigners.push({ ...signer, token: jwtToken, order: index })
     }
 
     // ── 7. Create SignatureField records ─────────────────────────────────
@@ -192,12 +194,16 @@ export async function POST(
 
   // ── 9. Send signing-request emails ───────────────────────────────────────
   // Do this outside the transaction so a failed email doesn't roll back the DB changes.
+  // Sequential signing: only email the first signer(s) (order = 0).
+  // Each subsequent signer gets emailed automatically after the previous one signs
+  // (see the sign route — it emails the next signer when the current one finishes).
   const senderName = document.owner.name ?? document.owner.email ?? 'Someone'
   const baseUrl = process.env.NEXTAUTH_URL
     ?? (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')
 
+  const firstSigners = createdSigners.filter((s) => s.order === 0)
   await Promise.all(
-    createdSigners.map((signer) =>
+    firstSigners.map((signer) =>
       sendSigningRequest({
         to: signer.email,
         signerName: signer.name,

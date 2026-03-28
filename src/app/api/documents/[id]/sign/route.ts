@@ -33,7 +33,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { verifySigningToken } from '@/lib/signing-token'
-import { sendCompletionNotification } from '@/lib/emails'
+import { sendCompletionNotification, sendSigningRequest } from '@/lib/emails'
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib'
 
 // ── Body types ─────────────────────────────────────────────────────────────────
@@ -272,6 +272,47 @@ export async function POST(
         signedIp: ip,
       },
     })
+
+    // ── Sequential signing: email the next signer(s) in line ─────────────
+    // Fetch the order of the signer who just signed, then find any pending
+    // signers with order = currentOrder + 1 and email them now.
+    const currentSigner = await prisma.signer.findUnique({
+      where: { id: signer.id },
+      select: { order: true },
+    })
+
+    const nextSigners = await prisma.signer.findMany({
+      where: {
+        documentId: id,
+        order: (currentSigner?.order ?? 0) + 1,
+        status: 'pending',
+      },
+      select: { id: true, name: true, email: true, token: true },
+    })
+
+    if (nextSigners.length > 0) {
+      // Load the document name and owner name for the email
+      const docForEmail = await prisma.document.findUnique({
+        where: { id },
+        select: { name: true, owner: { select: { name: true, email: true } } },
+      })
+      const senderName = docForEmail?.owner.name ?? docForEmail?.owner.email ?? 'Someone'
+      const baseUrl =
+        process.env.NEXTAUTH_URL ??
+        (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')
+
+      await Promise.all(
+        nextSigners.map((ns) =>
+          sendSigningRequest({
+            to: ns.email,
+            signerName: ns.name,
+            senderName,
+            docName: docForEmail?.name ?? 'Document',
+            signingUrl: `${baseUrl}/sign/${ns.token}`,
+          })
+        )
+      )
+    }
 
     // Check whether ALL signers have now signed
     const pendingCount = await prisma.signer.count({

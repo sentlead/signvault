@@ -15,9 +15,9 @@
 
 import '@/lib/pdf-worker'
 
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Loader2, Download } from 'lucide-react'
 import { Document, Page } from 'react-pdf'
 import 'react-pdf/dist/Page/AnnotationLayer.css'
 import 'react-pdf/dist/Page/TextLayer.css'
@@ -106,6 +106,22 @@ export function ExternalSigningEditor({
   const [isGenerating, setIsGenerating] = useState(false)
   const [genError, setGenError]         = useState<string | null>(null)
 
+  // ── Responsive container width ────────────────────────────────────────────
+  // Measure the <main> element so the PDF can scale to fit on mobile.
+  const mainRef = useRef<HTMLElement>(null)
+  const [containerWidth, setContainerWidth] = useState(BASE_WIDTH)
+
+  useEffect(() => {
+    function update() {
+      if (mainRef.current) {
+        setContainerWidth(mainRef.current.clientWidth)
+      }
+    }
+    update()
+    window.addEventListener('resize', update)
+    return () => window.removeEventListener('resize', update)
+  }, [])
+
   // ── Current page fields ───────────────────────────────────────────────────
   const pageFields = initialFields.filter((f) => f.pageNumber === currentPage)
 
@@ -177,8 +193,14 @@ export function ExternalSigningEditor({
   const modalTitle      = activeField?.type === 'initials' ? 'Add Initials' : 'Add Signature'
   const modalDefaultName = activeField?.type === 'initials' ? getInitials(signerName) : signerName
 
-  const pageWidth  = BASE_WIDTH
+  // PDF width: cap at BASE_WIDTH but shrink to fit the container on mobile.
+  const pageWidth  = Math.min(BASE_WIDTH, containerWidth - 32)
   const pageHeight = pageSize.height * (pageWidth / pageSize.width)
+
+  // Progress values used by the mobile floating bar
+  const filledCount = initialFields.filter((f) => fieldValues[f.id] !== undefined).length
+  const allFilled   = filledCount === initialFields.length
+  const pct         = initialFields.length === 0 ? 0 : Math.round((filledCount / initialFields.length) * 100)
 
   return (
     <div className="bg-sv-bg dark:bg-sv-dark-bg flex flex-col min-h-[calc(100vh-7rem)]">
@@ -200,16 +222,18 @@ export function ExternalSigningEditor({
       {/* ── Main area ─────────────────────────────────────────────────────── */}
       <div className="flex flex-1 overflow-hidden">
 
-        {/* Left sidebar with progress */}
-        <ProgressSidebar
-          fields={initialFields}
-          values={fieldValues}
-          onFinish={handleFinish}
-          isGenerating={isGenerating}
-        />
+        {/* Left sidebar — hidden on mobile, shown on large screens */}
+        <div className="hidden lg:block">
+          <ProgressSidebar
+            fields={initialFields}
+            values={fieldValues}
+            onFinish={handleFinish}
+            isGenerating={isGenerating}
+          />
+        </div>
 
-        {/* Center PDF viewer */}
-        <main className="flex-1 overflow-auto p-6 flex flex-col items-center">
+        {/* Center PDF viewer — full width on mobile */}
+        <main ref={mainRef} className="flex-1 overflow-auto p-6 pb-20 lg:pb-6 flex flex-col items-center">
 
           {/* Error banner */}
           {genError && (
@@ -393,6 +417,44 @@ export function ExternalSigningEditor({
             Click any highlighted field to fill it in. Date fields fill automatically.
           </p>
         </main>
+
+        {/* ── Mobile floating progress bar ─────────────────────────────────
+            Shown instead of the sidebar on small screens (< lg).
+            Sticks to the bottom so the finish button is always reachable. */}
+        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-10
+                        bg-sv-surface dark:bg-sv-dark-surface
+                        border-t border-sv-border dark:border-sv-dark-border
+                        px-4 py-3 flex items-center gap-3 shadow-lg">
+          {/* Progress text + bar */}
+          <div className="flex-1">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs font-medium text-sv-text dark:text-sv-dark-text">
+                {filledCount} / {initialFields.length} fields
+              </span>
+              <span className="text-xs text-sv-secondary dark:text-sv-dark-secondary">
+                {pct}%
+              </span>
+            </div>
+            <div className="w-full h-1.5 rounded-full bg-sv-border dark:bg-sv-dark-border overflow-hidden">
+              <div
+                className="h-full rounded-full bg-sv-primary dark:bg-sv-dark-primary transition-all"
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+          </div>
+          {/* Finish button */}
+          <button
+            onClick={handleFinish}
+            disabled={!allFilled || isGenerating}
+            className="flex-shrink-0 px-4 py-2 rounded-[var(--radius-button)]
+                       bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold
+                       disabled:opacity-50 disabled:cursor-not-allowed transition-colors
+                       flex items-center gap-2"
+          >
+            {isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+            Finish
+          </button>
+        </div>
       </div>
 
       {/* Signature modal */}
