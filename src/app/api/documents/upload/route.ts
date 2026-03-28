@@ -67,24 +67,28 @@ export async function POST(req: NextRequest) {
 
   let fileUrl: string
 
-  if (process.env.BLOB_READ_WRITE_TOKEN) {
-    // Production / Vercel preview: upload to Vercel Blob
-    const { put } = await import('@vercel/blob')
-    const blob = await put(uniqueFilename, buffer, {
-      access: 'public',
-      contentType: 'application/pdf',
-    })
-    fileUrl = blob.url
-  } else {
-    // Local dev fallback: write to /uploads/ directory
-    const fs = await import('fs')
-    const path = await import('path')
-    // The comment below prevents Turbopack from tracing the entire project directory
-    const uploadsDir = path.join(/*turbopackIgnore: true*/ process.cwd(), 'uploads')
-    await fs.promises.mkdir(uploadsDir, { recursive: true })
-    const filePath = path.join(uploadsDir, uniqueFilename)
-    await fs.promises.writeFile(filePath, buffer)
-    fileUrl = `uploads/${uniqueFilename}`
+  try {
+    if (process.env.BLOB_READ_WRITE_TOKEN) {
+      // Production / Vercel preview: upload to Vercel Blob
+      const { put } = await import('@vercel/blob')
+      const blob = await put(uniqueFilename, buffer, {
+        access: 'public',
+        contentType: 'application/pdf',
+      })
+      fileUrl = blob.url
+    } else {
+      // Local dev fallback: write to /uploads/ directory
+      const fs = await import('fs')
+      const path = await import('path')
+      // The comment below prevents Turbopack from tracing the entire project directory
+      const uploadsDir = path.join(/*turbopackIgnore: true*/ process.cwd(), 'uploads')
+      await fs.promises.mkdir(uploadsDir, { recursive: true })
+      const filePath = path.join(uploadsDir, uniqueFilename)
+      await fs.promises.writeFile(filePath, buffer)
+      fileUrl = `uploads/${uniqueFilename}`
+    }
+  } catch {
+    return NextResponse.json({ error: 'Failed to store file' }, { status: 500 })
   }
 
   // ── 5. Create Document in database ────────────────────────────────────
