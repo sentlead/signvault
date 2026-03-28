@@ -86,7 +86,6 @@ async function serveFile(fileUrl: string): Promise<Response> {
         },
       })
       if (!blobRes.ok) {
-        console.error('[file] blob fetch failed:', blobRes.status, fileUrl)
         return NextResponse.json({ error: 'File not found in storage' }, { status: 404 })
       }
       return new Response(blobRes.body, {

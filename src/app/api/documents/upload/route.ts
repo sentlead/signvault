@@ -87,8 +87,7 @@ export async function POST(req: NextRequest) {
       await fs.promises.writeFile(filePath, buffer)
       fileUrl = `uploads/${uniqueFilename}`
     }
-  } catch (err) {
-    console.error('[upload] file storage error:', err)
+  } catch {
     return NextResponse.json({ error: 'Failed to store file' }, { status: 500 })
   }
 
@@ -103,8 +102,7 @@ export async function POST(req: NextRequest) {
         status: 'draft',
       },
     })
-  } catch (err) {
-    console.error('[upload] db error:', err)
+  } catch {
     return NextResponse.json({ error: 'Failed to save document' }, { status: 500 })
   }
 
