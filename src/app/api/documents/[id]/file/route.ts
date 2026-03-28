@@ -79,19 +79,26 @@ export async function GET(
 async function serveFile(fileUrl: string): Promise<Response> {
   if (fileUrl.startsWith('https://')) {
     // Stream through the server so the browser never needs direct blob access
-    const { head } = await import('@vercel/blob')
-    const meta = await head(fileUrl)
-    const blobRes = await fetch(meta.downloadUrl)
-    if (!blobRes.ok) {
-      return NextResponse.json({ error: 'File not found in storage' }, { status: 404 })
+    try {
+      const { head } = await import('@vercel/blob')
+      const meta = await head(fileUrl)
+      console.log('[file] downloadUrl:', meta.downloadUrl)
+      const blobRes = await fetch(meta.downloadUrl)
+      console.log('[file] blob fetch status:', blobRes.status)
+      if (!blobRes.ok) {
+        return NextResponse.json({ error: 'File not found in storage' }, { status: 404 })
+      }
+      return new Response(blobRes.body, {
+        headers: {
+          'Content-Type': 'application/pdf',
+          'Content-Disposition': 'inline',
+          'Cache-Control': 'no-store',
+        },
+      })
+    } catch (err) {
+      console.error('[file] blob error:', err)
+      return NextResponse.json({ error: 'Could not retrieve file' }, { status: 500 })
     }
-    return new Response(blobRes.body, {
-      headers: {
-        'Content-Type': 'application/pdf',
-        'Content-Disposition': 'inline',
-        'Cache-Control': 'no-store',
-      },
-    })
   }
 
   // Legacy local dev path: read from /uploads/ on disk
@@ -117,9 +124,7 @@ async function serveFile(fileUrl: string): Promise<Response> {
     status: 200,
     headers: {
       'Content-Type': 'application/pdf',
-      // Allow the browser to display inline (needed for react-pdf)
       'Content-Disposition': `inline; filename="${filename}"`,
-      // Don't cache — we may update the file in the future
       'Cache-Control': 'no-store',
     },
   })
