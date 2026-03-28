@@ -54,9 +54,11 @@ export async function GET(
     // Vercel Blob URL: fetch via signed download URL and stream so we control Content-Disposition
     let blobResponse: globalThis.Response
     try {
-      const { head } = await import('@vercel/blob')
-      const meta = await head(document.signedFileUrl)
-      blobResponse = await fetch(meta.downloadUrl)
+      blobResponse = await fetch(document.signedFileUrl, {
+        headers: {
+          Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}`,
+        },
+      })
     } catch (err) {
       console.error('[signed-file] Failed to fetch from blob:', err)
       return NextResponse.json({ error: 'Could not retrieve signed file' }, { status: 500 })

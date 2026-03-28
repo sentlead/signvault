@@ -78,14 +78,15 @@ export async function GET(
 /** Serves a PDF — streams content from Vercel Blob or local disk */
 async function serveFile(fileUrl: string): Promise<Response> {
   if (fileUrl.startsWith('https://')) {
-    // Stream through the server so the browser never needs direct blob access
+    // Stream through the server — private blobs require the token in the request
     try {
-      const { head } = await import('@vercel/blob')
-      const meta = await head(fileUrl)
-      console.log('[file] downloadUrl:', meta.downloadUrl)
-      const blobRes = await fetch(meta.downloadUrl)
-      console.log('[file] blob fetch status:', blobRes.status)
+      const blobRes = await fetch(fileUrl, {
+        headers: {
+          Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}`,
+        },
+      })
       if (!blobRes.ok) {
+        console.error('[file] blob fetch failed:', blobRes.status, fileUrl)
         return NextResponse.json({ error: 'File not found in storage' }, { status: 404 })
       }
       return new Response(blobRes.body, {

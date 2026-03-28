@@ -76,9 +76,11 @@ async function storeSignedPdf(filename: string, bytes: Uint8Array): Promise<stri
 async function loadPdfBytes(fileUrl: string): Promise<Buffer | null> {
   if (fileUrl.startsWith('https://')) {
     try {
-      const { head } = await import('@vercel/blob')
-      const meta = await head(fileUrl)
-      const response = await fetch(meta.downloadUrl)
+      const response = await fetch(fileUrl, {
+        headers: {
+          Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}`,
+        },
+      })
       if (!response.ok) return null
       return Buffer.from(await response.arrayBuffer())
     } catch {
