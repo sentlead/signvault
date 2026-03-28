@@ -75,17 +75,23 @@ export async function GET(
   return serveFile(document.fileUrl)
 }
 
-/** Serves a PDF — redirects to Vercel Blob URL or streams from local disk */
+/** Serves a PDF — streams content from Vercel Blob or local disk */
 async function serveFile(fileUrl: string): Promise<Response> {
   if (fileUrl.startsWith('https://')) {
-    if (process.env.BLOB_READ_WRITE_TOKEN) {
-      // Private store: generate a signed download URL via head()
-      const { head } = await import('@vercel/blob')
-      const meta = await head(fileUrl)
-      return Response.redirect(meta.downloadUrl, 302)
+    // Stream through the server so the browser never needs direct blob access
+    const { head } = await import('@vercel/blob')
+    const meta = await head(fileUrl)
+    const blobRes = await fetch(meta.downloadUrl)
+    if (!blobRes.ok) {
+      return NextResponse.json({ error: 'File not found in storage' }, { status: 404 })
     }
-    // Public store fallback: redirect directly
-    return Response.redirect(fileUrl, 302)
+    return new Response(blobRes.body, {
+      headers: {
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': 'inline',
+        'Cache-Control': 'no-store',
+      },
+    })
   }
 
   // Legacy local dev path: read from /uploads/ on disk
