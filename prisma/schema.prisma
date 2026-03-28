@@ -95,10 +95,17 @@ model Document {
   ownerId       String
   fileUrl       String
   signedFileUrl String?
-  // Status can be: draft | awaiting_signatures | completed
+  // Status can be: draft | awaiting_signatures | completed | expired
   status        String    @default("draft")
   createdAt     DateTime  @default(now())
   completedAt   DateTime?
+
+  // Sent timestamp and expiry/reminder settings (populated when doc is sent)
+  sentAt            DateTime?  // when status changed to awaiting_signatures
+  expiresAt         DateTime?  // null = never expires; set based on plan at send time
+  reminderEnabled   Boolean   @default(true)
+  reminderInterval  Int       @default(3)  // days between auto-reminders
+  lastReminderAt    DateTime?              // last time cron sent an auto-reminder
 
   owner           User             @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   signers         Signer[]

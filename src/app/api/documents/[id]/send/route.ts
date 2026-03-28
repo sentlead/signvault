@@ -29,6 +29,7 @@ import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { createSigningToken } from '@/lib/signing-token'
 import { sendSigningRequest } from '@/lib/emails'
+import { getPlan } from '@/lib/plans'
 
 // ── Request body types ────────────────────────────────────────────────────────
 
@@ -159,10 +160,31 @@ export async function POST(
       })),
     })
 
-    // ── 8. Update document status ─────────────────────────────────────────
+    // ── 8. Update document status, sentAt, and expiresAt ─────────────────
+    // Look up the owner's plan to determine how long the document should
+    // stay open before automatically expiring.
+    const dbUser = await tx.user.findUnique({
+      where: { id: session.user.id! },
+      select: { plan: true },
+    })
+    const plan = getPlan(dbUser?.plan ?? 'free')
+    const expiryDays = plan.limits.expiryDays
+
+    const now = new Date()
+    // expiryDays === -1 means no expiry (business plan); otherwise calculate the date
+    const expiresAt = expiryDays === -1
+      ? null
+      : new Date(now.getTime() + expiryDays * 86400000)
+
     await tx.document.update({
       where: { id },
-      data: { status: 'awaiting_signatures' },
+      data: {
+        status: 'awaiting_signatures',
+        sentAt: now,
+        expiresAt,
+        reminderEnabled: true,
+        reminderInterval: 3,
+      },
     })
 
     return newSigners

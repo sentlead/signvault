@@ -15,6 +15,7 @@ export interface PlanConfig {
     maxFileSizeMB: number
     maxSignersPerDocument: number
     savedTemplates: number     // -1 = unlimited
+    expiryDays: number         // days until document expires; -1 = never expires
   }
   features: string[]
 }
@@ -33,6 +34,7 @@ export const PLANS: Record<PlanId, PlanConfig> = {
       maxFileSizeMB: 10,
       maxSignersPerDocument: 3,
       savedTemplates: 3,
+      expiryDays: 7,           // free plan: forced 7-day expiry, non-configurable
     },
     features: [
       '5 documents per month',
@@ -56,6 +58,7 @@ export const PLANS: Record<PlanId, PlanConfig> = {
       maxFileSizeMB: 50,
       maxSignersPerDocument: 10,
       savedTemplates: -1,
+      expiryDays: 90,          // pro plan: default 30 days, configurable up to 90
     },
     features: [
       'Unlimited documents',
@@ -81,6 +84,7 @@ export const PLANS: Record<PlanId, PlanConfig> = {
       maxFileSizeMB: 100,
       maxSignersPerDocument: 25,
       savedTemplates: -1,
+      expiryDays: -1,          // business plan: no forced expiry
     },
     features: [
       'Everything in Pro',

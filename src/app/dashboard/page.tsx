@@ -35,6 +35,7 @@ export default async function DashboardPage({
       name: true,
       status: true,
       createdAt: true,
+      expiresAt: true,  // needed for expiry warning badges in DocumentList
     },
   })
 

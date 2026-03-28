@@ -20,7 +20,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
-import { FileText, Eye, Trash2 } from 'lucide-react'
+import { FileText, Eye, Trash2, AlertCircle, Clock } from 'lucide-react'
 import { EmptyState } from './EmptyState'
 import { toast } from '@/lib/toast'
 
@@ -30,6 +30,8 @@ export interface DocumentItem {
   name: string
   status: string
   createdAt: Date
+  // expiresAt comes from the server as an ISO string (JSON-serialised Date) or null
+  expiresAt?: Date | string | null
 }
 
 interface DocumentListProps {
@@ -43,6 +45,7 @@ const TABS = [
   { key: 'draft', label: 'Drafts' },
   { key: 'awaiting_signatures', label: 'Awaiting' },
   { key: 'completed', label: 'Completed' },
+  { key: 'expired', label: 'Expired' },
 ] as const
 
 type TabKey = (typeof TABS)[number]['key']
@@ -56,6 +59,8 @@ function statusBadgeClasses(status: string): string {
       return 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
     case 'completed':
       return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+    case 'expired':
+      return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
     default:
       return 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
   }
@@ -67,8 +72,20 @@ function statusLabel(status: string): string {
     case 'draft': return 'Draft'
     case 'awaiting_signatures': return 'Awaiting'
     case 'completed': return 'Completed'
+    case 'expired': return 'Expired'
     default: return status
   }
+}
+
+/**
+ * Returns the number of days until the document expires.
+ * Returns null if there is no expiry date.
+ * Returns a negative number if the document has already expired.
+ */
+function daysUntilExpiry(expiresAt: Date | string | null | undefined): number | null {
+  if (!expiresAt) return null
+  const diff = new Date(expiresAt).getTime() - Date.now()
+  return Math.ceil(diff / 86400000)
 }
 
 // Format a date as "Mar 24, 2026"
@@ -211,6 +228,34 @@ export function DocumentList({ documents, loading = false }: DocumentListProps) 
                                   ${statusBadgeClasses(doc.status)}`}>
                   {statusLabel(doc.status)}
                 </span>
+
+                {/* Expiry warning badge — only shown for awaiting_signatures docs */}
+                {doc.status === 'awaiting_signatures' && (() => {
+                  const days = daysUntilExpiry(doc.expiresAt)
+                  // No expiry set, or already handled by expired status
+                  if (days === null || days <= 0) return null
+                  // Urgent: expires today or tomorrow (≤ 2 days)
+                  if (days <= 2) return (
+                    <span className="hidden md:inline-flex items-center gap-1 px-2 py-0.5
+                                     rounded-full text-xs font-medium
+                                     bg-red-100 text-red-700
+                                     dark:bg-red-900/30 dark:text-red-400">
+                      <AlertCircle className="w-3 h-3" />
+                      {days === 1 ? 'Expires tomorrow' : 'Expires today'}
+                    </span>
+                  )
+                  // Warning: expires within 7 days
+                  if (days <= 7) return (
+                    <span className="hidden md:inline-flex items-center gap-1 px-2 py-0.5
+                                     rounded-full text-xs font-medium
+                                     bg-amber-100 text-amber-700
+                                     dark:bg-amber-900/30 dark:text-amber-400">
+                      <Clock className="w-3 h-3" />
+                      {days}d left
+                    </span>
+                  )
+                  return null
+                })()}
 
                 {/* Date (desktop only) */}
                 <span className="hidden md:block text-xs text-sv-secondary dark:text-sv-dark-secondary

@@ -1,3 +1,7 @@
 {
-  "buildCommand": "npx prisma generate && next build"
+  "buildCommand": "npx prisma generate && next build",
+  "crons": [
+    { "path": "/api/cron/reminders", "schedule": "0 9 * * *" },
+    { "path": "/api/cron/expire-documents", "schedule": "5 0 * * *" }
+  ]
 }

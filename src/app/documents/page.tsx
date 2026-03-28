@@ -22,11 +22,12 @@ export default async function DocumentsPage({
 
   const { filter } = await searchParams
 
-  // Map the sidebar's ?filter=sent to the DB status value
+  // Map the sidebar's ?filter= query param to a DB status value
   const statusFilter =
-    filter === 'sent' ? 'awaiting_signatures' :
-    filter === 'completed' ? 'completed' :
-    filter === 'drafts' ? 'draft' :
+    filter === 'sent'      ? 'awaiting_signatures' :
+    filter === 'completed' ? 'completed'            :
+    filter === 'drafts'    ? 'draft'                :
+    filter === 'expired'   ? 'expired'              :
     undefined
 
   const documents = await prisma.document.findMany({
@@ -40,13 +41,15 @@ export default async function DocumentsPage({
       name: true,
       status: true,
       createdAt: true,
+      expiresAt: true,  // needed for expiry warning badges in DocumentList
     },
   })
 
   const pageTitle =
-    filter === 'sent' ? 'Sent for Signing' :
-    filter === 'completed' ? 'Completed' :
-    filter === 'drafts' ? 'Drafts' :
+    filter === 'sent'      ? 'Sent for Signing' :
+    filter === 'completed' ? 'Completed'         :
+    filter === 'drafts'    ? 'Drafts'            :
+    filter === 'expired'   ? 'Expired'           :
     'My Documents'
 
   return (
