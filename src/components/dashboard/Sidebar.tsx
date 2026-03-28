@@ -126,13 +126,15 @@ export function Sidebar({ user }: SidebarProps) {
     <div className="flex flex-col h-full">
       {/* ── Logo ───────────────────────────────────────────────────────────── */}
       <div className="flex items-center gap-2.5 px-4 py-5 border-b border-sv-border dark:border-sv-dark-border">
-        <div className="w-8 h-8 rounded-[8px] bg-sv-primary dark:bg-sv-dark-primary
-                        flex items-center justify-center shadow-sm flex-shrink-0">
-          <Vault className="w-4 h-4 text-white" strokeWidth={2.5} />
-        </div>
-        <span className="text-base font-bold tracking-tight text-sv-text dark:text-sv-dark-text">
-          Sign<span className="text-sv-primary dark:text-sv-dark-primary">Vault</span>
-        </span>
+        <Link href="/" className="flex items-center gap-2.5 hover:opacity-80 transition-opacity">
+          <div className="w-8 h-8 rounded-[8px] bg-sv-primary dark:bg-sv-dark-primary
+                          flex items-center justify-center shadow-sm flex-shrink-0">
+            <Vault className="w-4 h-4 text-white" strokeWidth={2.5} />
+          </div>
+          <span className="text-base font-bold tracking-tight text-sv-text dark:text-sv-dark-text">
+            Sign<span className="text-sv-primary dark:text-sv-dark-primary">Vault</span>
+          </span>
+        </Link>
         {/* Beta badge */}
         <span className="ml-auto text-[10px] font-semibold uppercase tracking-widest
                          bg-sv-primary/10 dark:bg-sv-dark-primary/20
