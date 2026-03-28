@@ -70,6 +70,16 @@ export function Navbar() {
         </span>
       </Link>
 
+      {/* ── Center nav links ─────────────────────────────────────────────── */}
+      <div className="hidden md:flex items-center gap-6 ml-8">
+        <Link
+          href="/pricing"
+          className="text-sm font-medium text-sv-secondary dark:text-sv-dark-secondary hover:text-sv-text dark:hover:text-sv-dark-text transition-colors"
+        >
+          Pricing
+        </Link>
+      </div>
+
       {/* ── Spacer ───────────────────────────────────────────────────────── */}
       <div className="flex-1" />
 

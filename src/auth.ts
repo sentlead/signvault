@@ -19,6 +19,7 @@ import NextAuth from "next-auth"
 import { PrismaAdapter } from "@auth/prisma-adapter"
 import Google from "next-auth/providers/google"
 import { prisma } from "@/lib/prisma"
+import type { PlanId } from "@/lib/plans"
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   // Use Prisma to persist users and accounts in our SQLite database
@@ -44,16 +45,32 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   },
 
   callbacks: {
-    // When a JWT is created (on sign-in), embed the user's DB id into it
-    jwt({ token, user }) {
-      if (user) token.id = user.id
+    // When a JWT is created (on sign-in), embed the user's DB id and plan.
+    // On subsequent requests, refresh the plan from the DB so it stays current.
+    async jwt({ token, user, trigger }) {
+      if (user) {
+        token.id = user.id
+        // Fetch plan on first sign-in
+        const dbUser = await prisma.user.findUnique({
+          where: { id: user.id },
+          select: { plan: true },
+        })
+        token.plan = (dbUser?.plan ?? 'free') as PlanId
+      }
+      // Re-fetch plan when session is explicitly updated (e.g. after upgrade)
+      if (trigger === 'update' && token.id) {
+        const dbUser = await prisma.user.findUnique({
+          where: { id: token.id as string },
+          select: { plan: true },
+        })
+        if (dbUser) token.plan = dbUser.plan as PlanId
+      }
       return token
     },
-    // Add the user's database ID to the session object from the JWT.
-    // By default, session only includes name, email, image.
-    // We need the ID to query the database for user-specific data.
+    // Add the user's database ID and plan to the session object from the JWT.
     session({ session, token }) {
       if (token.id) session.user.id = token.id as string
+      if (token.plan) session.user.plan = token.plan as PlanId
       return session
     },
   },

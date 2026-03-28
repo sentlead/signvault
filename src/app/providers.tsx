@@ -20,6 +20,23 @@ import { ThemeProvider } from 'next-themes'
 import { SessionProvider } from 'next-auth/react'
 import { ToastContainer } from '@/components/ui/Toast'
 
+// next-themes 0.4.x renders an inline <script> to prevent flash-of-wrong-theme
+// during SSR. React 19 warns about <script> tags inside client component trees
+// even though this usage is intentional and harmless (the script only needs to
+// run server-side). The warning fires during render, so it must be suppressed at
+// module evaluation time — before React reconciles anything.
+// Remove this once next-themes ships a React 19 compatible release.
+if (typeof window !== 'undefined') {
+  const _orig = console.error.bind(console)
+  console.error = (...args: unknown[]) => {
+    if (
+      typeof args[0] === 'string' &&
+      args[0].includes('Encountered a script tag while rendering React component')
+    ) return
+    _orig(...args)
+  }
+}
+
 interface ProvidersProps {
   children: React.ReactNode
 }

@@ -4,7 +4,8 @@
  * This server component:
  *   1. Checks the user is authenticated (redirects to /login if not)
  *   2. Loads the document from the database and verifies ownership
- *   3. Passes data to the client-side PrepareEditor component
+ *   3. Also loads any pre-created signers (e.g. when started from a template)
+ *   4. Passes everything to the client-side PrepareEditor component
  *
  * The actual PDF viewer, toolbar, and field placement logic all live in
  * PrepareEditor (a 'use client' component) because they need browser APIs.
@@ -26,14 +27,16 @@ export default async function PreparePage({ params }: PageProps) {
   const session = await auth()
   if (!session?.user?.id) redirect('/login')
 
-  // ── Load document with existing fields ───────────────────────────────
+  // ── Load document with existing fields AND signers ────────────────────
+  // Signers exist when this document was started from a template
+  // (the "use template" API pre-creates them).
   const document = await prisma.document.findFirst({
     where: { id, ownerId: session.user.id },
     select: {
       id: true,
       name: true,
       status: true,
-      // Load any previously placed fields so the editor restores them
+      // Previously placed fields (restored when editor loads)
       signatureFields: {
         select: {
           id: true,
@@ -46,6 +49,11 @@ export default async function PreparePage({ params }: PageProps) {
           signerId: true,
         },
       },
+      // Pre-created signers from a template "use" flow
+      signers: {
+        select: { id: true, name: true, email: true },
+        orderBy: { id: 'asc' },
+      },
     },
   })
 
@@ -57,6 +65,9 @@ export default async function PreparePage({ params }: PageProps) {
       documentId={document.id}
       documentName={document.name}
       initialFields={document.signatureFields}
+      // Only pass initialSigners when the document was started from a template
+      // (indicated by having pre-created signers before the user adds any)
+      initialSigners={document.signers.length > 0 ? document.signers : undefined}
     />
   )
 }

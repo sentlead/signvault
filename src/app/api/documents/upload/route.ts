@@ -16,16 +16,28 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
+import { checkDocumentLimit, checkFileSizeLimit, incrementUsage } from '@/lib/usage'
 import { v4 as uuidv4 } from 'uuid'
-
-// Max file size: 10 MB
-const MAX_SIZE_BYTES = 10 * 1024 * 1024
 
 export async function POST(req: NextRequest) {
   // ── 1. Auth check ──────────────────────────────────────────────────────
   const session = await auth()
   if (!session?.user?.id || !session.user.email) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  // ── 1b. Check document limit for this month ────────────────────────────
+  const docLimit = await checkDocumentLimit(session.user.id)
+  if (!docLimit.allowed) {
+    return NextResponse.json(
+      {
+        error: `You've reached your monthly limit of ${docLimit.limit} documents. Upgrade to Pro for unlimited documents.`,
+        code: 'DOCUMENT_LIMIT_REACHED',
+        used: docLimit.used,
+        limit: docLimit.limit,
+      },
+      { status: 403 }
+    )
   }
 
   // ── 2. Parse the multipart form data ──────────────────────────────────
@@ -52,10 +64,14 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  // Check file size
-  if (uploadedFile.size > MAX_SIZE_BYTES) {
+  // Check file size against the user's plan limit
+  const sizeCheck = await checkFileSizeLimit(session.user.id, uploadedFile.size)
+  if (!sizeCheck.allowed) {
     return NextResponse.json(
-      { error: 'File exceeds the 10 MB limit' },
+      {
+        error: `File is ${sizeCheck.fileSizeMB.toFixed(1)} MB but your plan allows up to ${sizeCheck.limitMB} MB.`,
+        code: 'FILE_TOO_LARGE',
+      },
       { status: 422 }
     )
   }
@@ -104,6 +120,13 @@ export async function POST(req: NextRequest) {
     })
   } catch {
     return NextResponse.json({ error: 'Failed to save document' }, { status: 500 })
+  }
+
+  // ── 5b. Increment usage counter for this month ────────────────────────
+  try {
+    await incrementUsage(session.user.id)
+  } catch {
+    // Non-fatal: document was created, usage tracking failure shouldn't block
   }
 
   // ── 6. Create AuditLog entry ───────────────────────────────────────────

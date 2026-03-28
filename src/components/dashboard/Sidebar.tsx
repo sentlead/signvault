@@ -28,6 +28,7 @@ import {
   Settings,
   LogOut,
   X,
+  CreditCard,
 } from 'lucide-react'
 import { SignVaultLogo } from '@/components/ui/SignVaultLogo'
 
@@ -37,6 +38,7 @@ interface SessionUser {
   name?: string | null
   email?: string | null
   image?: string | null
+  plan?: string
 }
 
 interface SidebarProps {
@@ -67,7 +69,13 @@ const navItems = [
     label: 'Templates',
     href: '/templates',
     icon: Copy,
-    badge: 'Soon',
+    badge: null,
+  },
+  {
+    label: 'Pricing & Plans',
+    href: '/pricing',
+    icon: CreditCard,
+    badge: null,
   },
   {
     label: 'Settings',
@@ -190,11 +198,22 @@ export function Sidebar({ user }: SidebarProps) {
               getInitials(user.name, user.email)
             )}
           </div>
-          {/* Name and email */}
+          {/* Name, plan badge, and email */}
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-semibold text-sv-text dark:text-sv-dark-text truncate">
-              {user.name ?? 'My Account'}
-            </p>
+            <div className="flex items-center gap-1.5 min-w-0">
+              <p className="text-xs font-semibold text-sv-text dark:text-sv-dark-text truncate">
+                {user.name ?? 'My Account'}
+              </p>
+              {user.plan && user.plan !== 'free' && (
+                <span className={`flex-shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wide ${
+                  user.plan === 'business'
+                    ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400'
+                    : 'bg-sv-primary/10 dark:bg-sv-dark-primary/20 text-sv-primary dark:text-sv-dark-primary'
+                }`}>
+                  {user.plan}
+                </span>
+              )}
+            </div>
             <p className="text-[11px] text-sv-secondary dark:text-sv-dark-secondary truncate">
               {user.email}
             </p>

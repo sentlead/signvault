@@ -13,10 +13,17 @@ import { redirect } from 'next/navigation'
 import { QuickActions } from '@/components/dashboard/QuickActions'
 import { DocumentList } from '@/components/dashboard/DocumentList'
 import { AdSidebar } from '@/components/dashboard/AdSidebar'
+import { SessionRefresher } from '@/components/dashboard/SessionRefresher'
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ upgraded?: string }>
+}) {
   const session = await auth()
   if (!session?.user?.id) redirect('/login')
+
+  const { upgraded } = await searchParams
 
   // Fetch the user's most recent 10 documents
   const documents = await prisma.document.findMany({
@@ -33,6 +40,8 @@ export default async function DashboardPage() {
 
   return (
     <div className="flex gap-8">
+      {/* Force JWT refresh after Stripe upgrade so plan changes take effect */}
+      {upgraded === '1' && <SessionRefresher />}
       {/* ── Main content area ─────────────────────────────────────────────── */}
       <div className="flex-1 min-w-0 space-y-6">
 
@@ -60,7 +69,7 @@ export default async function DashboardPage() {
       </div>
 
       {/* ── Ad sidebar (xl screens only) ────────────────────────────────── */}
-      <AdSidebar />
+      <AdSidebar plan={session.user.plan} />
     </div>
   )
 }

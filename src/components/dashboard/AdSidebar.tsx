@@ -3,20 +3,21 @@
 /**
  * AdSidebar.tsx — Advertisement sidebar for the dashboard (xl+ screens only)
  *
- * Shows two AdSense units stacked vertically:
- *   - 300×250 Medium Rectangle
- *   - 160×600 Wide Skyscraper
- *
- * Uses the AdUnit component which handles lazy script loading, fallback
- * placeholder display, and dark/light mode support.
- *
- * This must be a Client Component because AdUnit uses useEffect.
+ * Hidden entirely for Pro/Business users — no ads for paid plans.
  */
 
 import { AdUnit } from '@/components/ui/AdUnit'
 import { HoroscopumAd } from '@/components/ui/HoroscopumAd'
+import { isPaidPlan } from '@/lib/plans'
 
-export function AdSidebar() {
+interface AdSidebarProps {
+  plan?: string
+}
+
+export function AdSidebar({ plan }: AdSidebarProps) {
+  // Paid users don't see ads
+  if (isPaidPlan(plan ?? 'free')) return null
+
   return (
     <aside className="hidden xl:flex flex-col gap-4 w-[180px] flex-shrink-0">
 

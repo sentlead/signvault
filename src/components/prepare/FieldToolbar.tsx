@@ -13,7 +13,7 @@
  *   - "Save & Continue" or "Send for Signatures" button
  */
 
-import { PenLine, Type, Calendar, AlignLeft, ChevronLeft, ChevronRight, Minus, Plus, Save, Loader2, Send, UserCheck } from 'lucide-react'
+import { PenLine, Type, Calendar, AlignLeft, ChevronLeft, ChevronRight, Minus, Plus, Save, Loader2, Send, UserCheck, BookmarkPlus } from 'lucide-react'
 import type { FieldType, PrepareMode } from './PrepareEditor'
 import type { SignerData } from './SignerPanel'
 import { SignerPanel, getSignerColor } from './SignerPanel'
@@ -43,6 +43,10 @@ interface FieldToolbarProps {
   // Actions
   onSave: () => void
   isSaving: boolean
+  /** Opens the Save as Template modal. Only shown when fields have been placed. */
+  onSaveAsTemplate?: () => void
+  /** Total number of fields placed (used to show/hide the template button) */
+  fieldCount: number
 }
 
 // Config for each field type button
@@ -111,6 +115,8 @@ export function FieldToolbar({
   onZoomChange,
   onSave,
   isSaving,
+  onSaveAsTemplate,
+  fieldCount,
 }: FieldToolbarProps) {
   return (
     <div className="
@@ -374,6 +380,26 @@ export function FieldToolbar({
 
       {/* ── Spacer ───────────────────────────────────────────────────────── */}
       <div className="flex-1" />
+
+      {/* ── Save as Template (secondary action, only when fields are placed) ── */}
+      {onSaveAsTemplate && fieldCount > 0 && (
+        <button
+          onClick={onSaveAsTemplate}
+          className="
+            w-full py-2.5 px-4 rounded-[var(--radius-button)]
+            border border-sv-border dark:border-sv-dark-border
+            text-sv-secondary dark:text-sv-dark-secondary
+            text-sm font-medium
+            flex items-center justify-center gap-2
+            hover:border-sv-primary dark:hover:border-sv-dark-primary
+            hover:text-sv-primary dark:hover:text-sv-dark-primary
+            transition-colors duration-150
+          "
+        >
+          <BookmarkPlus className="w-4 h-4" />
+          Save as Template
+        </button>
+      )}
 
       {/* ── Primary action button ─────────────────────────────────────────── */}
       <button

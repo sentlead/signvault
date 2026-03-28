@@ -24,6 +24,7 @@ interface SessionUser {
   name?: string | null
   email?: string | null
   image?: string | null
+  plan?: string
 }
 
 interface DashboardNavbarProps {
@@ -169,11 +170,22 @@ export function DashboardNavbar({ user }: DashboardNavbarProps) {
                              border border-sv-border dark:border-sv-dark-border
                              rounded-[var(--radius-card)] shadow-lg py-1 overflow-hidden"
                 >
-                  {/* Name + email */}
+                  {/* Name + email + plan */}
                   <div className="px-3 py-2.5 border-b border-sv-border dark:border-sv-dark-border">
-                    <p className="text-xs font-semibold text-sv-text dark:text-sv-dark-text truncate">
-                      {user.name ?? 'My Account'}
-                    </p>
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <p className="text-xs font-semibold text-sv-text dark:text-sv-dark-text truncate">
+                        {user.name ?? 'My Account'}
+                      </p>
+                      {user.plan && user.plan !== 'free' && (
+                        <span className={`flex-shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wide ${
+                          user.plan === 'business'
+                            ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400'
+                            : 'bg-sv-primary/10 dark:bg-sv-dark-primary/20 text-sv-primary dark:text-sv-dark-primary'
+                        }`}>
+                          {user.plan}
+                        </span>
+                      )}
+                    </div>
                     <p className="text-xs text-sv-secondary dark:text-sv-dark-secondary truncate">
                       {user.email}
                     </p>

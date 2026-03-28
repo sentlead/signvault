@@ -8,7 +8,18 @@ export default async function SettingsPage() {
   const session = await auth()
   const user = await prisma.user.findUnique({
     where: { id: session!.user.id },
-    select: { id: true, name: true, email: true, image: true, createdAt: true },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      image: true,
+      createdAt: true,
+      plan: true,
+      billingInterval: true,
+      subscriptionStatus: true,
+      currentPeriodEnd: true,
+      stripeCustomerId: true,
+    },
   })
 
   return (

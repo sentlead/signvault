@@ -33,6 +33,7 @@ import { FieldToolbar } from './FieldToolbar'
 import { PdfCanvas } from './PdfCanvas'
 import { SignerPanel, getSignerColor } from './SignerPanel'
 import type { SignerData } from './SignerPanel'
+import { SaveTemplateModal } from './SaveTemplateModal'
 import { toast } from '@/lib/toast'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -70,11 +71,23 @@ interface ServerField {
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 
+/** A signer pre-created in the DB (e.g. from a "use template" flow) */
+interface InitialSigner {
+  id: string
+  name: string
+  email: string
+}
+
 interface PrepareEditorProps {
   documentId: string
   documentName: string
   /** Fields that were previously saved (loaded from DB on page mount) */
   initialFields: ServerField[]
+  /**
+   * Signers pre-created in the DB when this document was started from a template.
+   * If present, the editor starts in "send" mode with these signers pre-loaded.
+   */
+  initialSigners?: InitialSigner[]
 }
 
 // Tiny guard so fields are never completely invisible (in % of page)
@@ -101,18 +114,31 @@ export function PrepareEditor({
   documentId,
   documentName,
   initialFields,
+  initialSigners,
 }: PrepareEditorProps) {
   const router = useRouter()
 
   // ── Mode state ────────────────────────────────────────────────────────────
-  // "self"  = owner signs directly (original behaviour)
+  // "self"  = owner signs directly
   // "send"  = collect signers and send emails
-  const [mode, setMode] = useState<PrepareMode>('self')
+  // If the document was started from a template that had signer roles, start
+  // in "send" mode so the pre-loaded fields are shown with their signer colours.
+  const [mode, setMode] = useState<PrepareMode>(
+    initialSigners && initialSigners.length > 0 ? 'send' : 'self'
+  )
 
   // ── Signers state (only used in "send" mode) ──────────────────────────────
-  const [signers, setSigners] = useState<SignerData[]>([])
+  // If this doc came from a template, pre-populate with the template's signers.
+  const [signers, setSigners] = useState<SignerData[]>(
+    initialSigners ?? []
+  )
   // Which signer's fields are being placed right now
-  const [selectedSignerId, setSelectedSignerId] = useState<string | null>(null)
+  const [selectedSignerId, setSelectedSignerId] = useState<string | null>(
+    initialSigners?.[0]?.id ?? null
+  )
+
+  // ── Save-as-Template modal state ──────────────────────────────────────────
+  const [showSaveTemplateModal, setShowSaveTemplateModal] = useState(false)
 
   // Currently selected field type (used when placing new fields)
   const [selectedType, setSelectedType] = useState<FieldType>('signature')
@@ -290,6 +316,40 @@ export function PrepareEditor({
     }
   }
 
+  // ── Save as Template ─────────────────────────────────────────────────────
+
+  async function handleSaveAsTemplate(name: string, description: string) {
+    // Convert client-side FieldData → template field format.
+    // We store signerRoleIndex (position in the signers array) instead of
+    // the temporary client-side signerId, so it survives across sessions.
+    const templateFields = fields.map((f) => ({
+      type: f.type,
+      pageNumber: f.pageNumber,
+      x: f.x,
+      y: f.y,
+      width: f.width,
+      height: f.height,
+      signerRoleIndex: f.signerId ? signers.findIndex((s) => s.id === f.signerId) : -1,
+    }))
+
+    // Store signer roles (names as role labels, no emails — those are personal)
+    const signerRoles = signers.map((s) => ({ role: s.name || 'Signer' }))
+
+    const res = await fetch('/api/templates', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, description, documentId, fields: templateFields, signerRoles }),
+    })
+
+    if (!res.ok) {
+      const data = await res.json() as { error?: string }
+      throw new Error(data.error ?? 'Failed to save template.')
+    }
+
+    toast.success('Template saved!')
+    setShowSaveTemplateModal(false)
+  }
+
   // The selected signer's color index (for the toolbar indicator)
   const selectedSignerIndex = signers.findIndex((s) => s.id === selectedSignerId)
   const selectedSignerColor = selectedSignerIndex >= 0
@@ -299,6 +359,7 @@ export function PrepareEditor({
   // ── Render ──────────────────────────────────────────────────────────────
 
   return (
+    <>
     <div className="min-h-screen bg-sv-bg dark:bg-sv-dark-bg flex flex-col">
 
       {/* ── Top bar ─────────────────────────────────────────────────────── */}
@@ -361,6 +422,8 @@ export function PrepareEditor({
           onZoomChange={setZoom}
           onSave={mode === 'self' ? handleSave : handleSend}
           isSaving={isSaving}
+          onSaveAsTemplate={() => setShowSaveTemplateModal(true)}
+          fieldCount={fields.length}
         />
 
         {/* Center PDF viewer */}
@@ -428,5 +491,14 @@ export function PrepareEditor({
         </main>
       </div>
     </div>
+
+    {/* ── Save as Template modal (overlays everything) */}
+    {showSaveTemplateModal && (
+      <SaveTemplateModal
+        onConfirm={handleSaveAsTemplate}
+        onClose={() => setShowSaveTemplateModal(false)}
+      />
+    )}
+    </>
   )
 }

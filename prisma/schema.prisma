@@ -60,11 +60,33 @@ model User {
   image         String?   // Used by NextAuth for OAuth profile picture
   createdAt     DateTime  @default(now())
 
+  // Subscription / billing
+  plan                 String    @default("free")       // "free" | "pro" | "business"
+  billingInterval      String?                           // "monthly" | "yearly"
+  stripeCustomerId     String?   @unique
+  stripeSubscriptionId String?
+  subscriptionStatus   String?   @default("inactive")   // "active" | "past_due" | "canceled" | "inactive"
+  currentPeriodEnd     DateTime?
+
   // Relations
   accounts        Account[]
   sessions        Session[]
   documents       Document[]
   savedSignatures SavedSignature[]
+  usageRecords    UsageRecord[]
+  templates       Template[]
+}
+
+// Tracks how many documents a user has created each calendar month
+model UsageRecord {
+  id               String @id @default(cuid())
+  userId           String
+  period           String // "YYYY-MM"
+  documentsCreated Int    @default(0)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, period])
 }
 
 model Document {
@@ -126,6 +148,24 @@ model AuditLog {
   timestamp  DateTime @default(now())
 
   document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+}
+
+// A reusable document template — stores a PDF and its pre-placed field layout
+// so the user doesn't have to drag out fields every time for the same doc type.
+model Template {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  ownerId     String
+  fileUrl     String                   // the PDF this template was built from
+  // JSON string: TemplateField[] — positions/types/signerRoleIndex for each field
+  fields      String   @default("[]")
+  // JSON string: SignerRole[] — role name for each signer slot, e.g. [{ "role": "Client" }]
+  signerRoles String   @default("[]")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
 }
 
 // Stores user's saved signature images (base64 PNG data) for reuse
