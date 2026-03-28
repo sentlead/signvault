@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
       // Production / Vercel preview: upload to Vercel Blob
       const { put } = await import('@vercel/blob')
       const blob = await put(uniqueFilename, buffer, {
-        access: 'public',
+        access: 'private',
         contentType: 'application/pdf',
       })
       fileUrl = blob.url

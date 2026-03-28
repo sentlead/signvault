@@ -51,10 +51,12 @@ export async function GET(
 
   // ── Serve the signed PDF ──────────────────────────────────────────────────
   if (document.signedFileUrl.startsWith('https://')) {
-    // Vercel Blob URL: fetch and stream so we control Content-Disposition
+    // Vercel Blob URL: fetch via signed download URL and stream so we control Content-Disposition
     let blobResponse: globalThis.Response
     try {
-      blobResponse = await fetch(document.signedFileUrl)
+      const { head } = await import('@vercel/blob')
+      const meta = await head(document.signedFileUrl)
+      blobResponse = await fetch(meta.downloadUrl)
     } catch (err) {
       console.error('[signed-file] Failed to fetch from blob:', err)
       return NextResponse.json({ error: 'Could not retrieve signed file' }, { status: 500 })

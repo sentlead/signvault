@@ -77,10 +77,14 @@ export async function GET(
 
 /** Serves a PDF — redirects to Vercel Blob URL or streams from local disk */
 async function serveFile(fileUrl: string): Promise<Response> {
-  // If the stored URL is a full https:// URL (Vercel Blob), redirect to it.
-  // The auth check above prevents unauthenticated document enumeration even
-  // though the blob itself is publicly accessible.
   if (fileUrl.startsWith('https://')) {
+    if (process.env.BLOB_READ_WRITE_TOKEN) {
+      // Private store: generate a signed download URL via head()
+      const { head } = await import('@vercel/blob')
+      const meta = await head(fileUrl)
+      return Response.redirect(meta.downloadUrl, 302)
+    }
+    // Public store fallback: redirect directly
     return Response.redirect(fileUrl, 302)
   }
 
