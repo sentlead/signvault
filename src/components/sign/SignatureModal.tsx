@@ -53,10 +53,6 @@ function DrawTab({ onCapture }: { onCapture: (dataUrl: string | null) => void })
   const padRef    = useRef<SignaturePad | null>(null)
   const [thickness, setThickness] = useState(2)
 
-  // Detect dark mode so we can pick the right pen colour
-  const isDark = typeof window !== 'undefined' &&
-    window.matchMedia('(prefers-color-scheme: dark)').matches
-
   // Initialise SignaturePad when the canvas mounts
   useEffect(() => {
     const canvas = canvasRef.current
@@ -70,13 +66,19 @@ function DrawTab({ onCapture }: { onCapture: (dataUrl: string | null) => void })
       const data = padRef.current?.toDataURL()
       canvas.width  = rect.width
       canvas.height = rect.height
+      // Restore white background after resize (canvas clears on dimension change)
+      const ctx = canvas.getContext('2d')
+      if (ctx) {
+        ctx.fillStyle = '#ffffff'
+        ctx.fillRect(0, 0, canvas.width, canvas.height)
+      }
       if (padRef.current && data) {
         void padRef.current.fromDataURL(data)
       }
     }
 
     padRef.current = new SignaturePad(canvas, {
-      penColor:   isDark ? '#F3F4F6' : '#111827',
+      penColor:   '#111827', // always black — signatures embed into PDFs on white backgrounds
       minWidth:   thickness,
       maxWidth:   thickness,
     })
@@ -122,7 +124,7 @@ function DrawTab({ onCapture }: { onCapture: (dataUrl: string | null) => void })
       {/* Drawing area */}
       <div className="relative w-full h-44 rounded-[var(--radius-button)]
                       border-2 border-dashed border-sv-border dark:border-sv-dark-border
-                      bg-white dark:bg-gray-900 overflow-hidden">
+                      bg-white overflow-hidden">
         <canvas
           ref={canvasRef}
           className="absolute inset-0 touch-none"
