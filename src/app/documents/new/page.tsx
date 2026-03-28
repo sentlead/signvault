@@ -117,8 +117,14 @@ export default function NewDocumentPage() {
       clearInterval(progressInterval)
 
       if (!res.ok) {
-        const data = (await res.json()) as { error?: string }
-        throw new Error(data.error ?? 'Upload failed')
+        let message = 'Upload failed'
+        try {
+          const data = (await res.json()) as { error?: string }
+          if (data.error) message = data.error
+        } catch {
+          // Response wasn't JSON (e.g. empty 500)
+        }
+        throw new Error(message)
       }
 
       const data = (await res.json()) as { documentId: string; name: string }

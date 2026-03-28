@@ -88,24 +88,33 @@ export async function POST(req: NextRequest) {
   }
 
   // ── 5. Create Document in database ────────────────────────────────────
-  const document = await prisma.document.create({
-    data: {
-      name: uploadedFile.name,
-      ownerId: session.user.id,
-      fileUrl,
-      status: 'draft',
-    },
-  })
+  let document: Awaited<ReturnType<typeof prisma.document.create>>
+  try {
+    document = await prisma.document.create({
+      data: {
+        name: uploadedFile.name,
+        ownerId: session.user.id,
+        fileUrl,
+        status: 'draft',
+      },
+    })
+  } catch {
+    return NextResponse.json({ error: 'Failed to save document' }, { status: 500 })
+  }
 
   // ── 6. Create AuditLog entry ───────────────────────────────────────────
-  await prisma.auditLog.create({
-    data: {
-      documentId: document.id,
-      action: 'document_created',
-      actorEmail: session.user.email,
-      // IP address is not reliably available in Next.js App Router without middleware
-    },
-  })
+  try {
+    await prisma.auditLog.create({
+      data: {
+        documentId: document.id,
+        action: 'document_created',
+        actorEmail: session.user.email,
+        // IP address is not reliably available in Next.js App Router without middleware
+      },
+    })
+  } catch {
+    // Non-fatal: document was created, audit log failure shouldn't block the user
+  }
 
   // ── 7. Return the new document's ID and name ───────────────────────────
   return NextResponse.json(
