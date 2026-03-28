@@ -1,15 +1,12 @@
 'use client'
 
 /**
- * AdBanner.tsx — Horizontal leaderboard ad unit (728×90)
- *
- * Uses the AdUnit component which loads Google AdSense lazily.
- * When NEXT_PUBLIC_ADSENSE_ID is not set, shows a styled placeholder.
- * Fades in with Framer Motion when it enters the viewport.
+ * AdBanner.tsx — Horizontal ad banner between sections.
+ * Currently shows the animated horoscopum.com house ad.
  */
 
 import { motion } from 'framer-motion'
-import { AdUnit } from '@/components/ui/AdUnit'
+import { HoroscopumAd } from '@/components/ui/HoroscopumAd'
 
 export function AdBanner() {
   return (
@@ -20,18 +17,12 @@ export function AdBanner() {
           Advertisement
         </p>
         <motion.div
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
+          initial={{ opacity: 0, y: 12 }}
+          whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          transition={{ duration: 0.4 }}
+          transition={{ duration: 0.5 }}
         >
-          {/* 728×90 leaderboard format — standard top-of-page banner */}
-          <AdUnit
-            slot="0000000000"
-            format="horizontal"
-            style={{ width: '100%', height: 90, maxWidth: 728, margin: '0 auto' }}
-            className="rounded-[12px] overflow-hidden"
-          />
+          <HoroscopumAd />
         </motion.div>
       </div>
     </section>
