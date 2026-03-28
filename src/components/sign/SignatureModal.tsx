@@ -36,10 +36,14 @@ interface SignatureModalProps {
 // ── Handwriting fonts (self-hosted via next/font, injected as CSS variables) ──
 
 const HANDWRITING_FONTS = [
-  { id: 'dancing', family: 'var(--font-dancing-script), cursive', label: 'Dancing Script' },
-  { id: 'pacifico', family: 'var(--font-pacifico), cursive',      label: 'Pacifico' },
-  { id: 'caveat',   family: 'var(--font-caveat), cursive',         label: 'Caveat' },
-  { id: 'sacr',     family: 'var(--font-sacramento), cursive',     label: 'Sacramento' },
+  { id: 'dancing',  family: 'var(--font-dancing-script), cursive',  label: 'Dancing Script' },
+  { id: 'great',    family: 'var(--font-great-vibes), cursive',      label: 'Great Vibes' },
+  { id: 'sacr',     family: 'var(--font-sacramento), cursive',       label: 'Sacramento' },
+  { id: 'alex',     family: 'var(--font-alex-brush), cursive',       label: 'Alex Brush' },
+  { id: 'satisfy',  family: 'var(--font-satisfy), cursive',          label: 'Satisfy' },
+  { id: 'kaushan',  family: 'var(--font-kaushan-script), cursive',   label: 'Kaushan Script' },
+  { id: 'pacifico', family: 'var(--font-pacifico), cursive',         label: 'Pacifico' },
+  { id: 'caveat',   family: 'var(--font-caveat), cursive',           label: 'Caveat' },
 ] as const
 
 // ── Sub-component: Draw tab ────────────────────────────────────────────────────
@@ -186,18 +190,18 @@ function TypeTab({
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
-    canvas.width  = 400
-    canvas.height = 100
+    canvas.width  = 800
+    canvas.height = 200
 
     // Fill white background (pdf-lib needs opaque images for best results)
     ctx.fillStyle = '#ffffff'
     ctx.fillRect(0, 0, canvas.width, canvas.height)
 
-    // Draw the text
-    ctx.font      = `48px ${selectedFont}`
+    // Draw the text at 2× resolution for sharper embedding in the PDF
+    ctx.font      = `96px ${selectedFont}`
     ctx.fillStyle = '#111827'
     ctx.textBaseline = 'middle'
-    ctx.fillText(typedName, 16, canvas.height / 2)
+    ctx.fillText(typedName, 24, canvas.height / 2)
 
     onCapture(canvas.toDataURL('image/png'))
   }, [typedName, selectedFont, onCapture])
@@ -229,7 +233,7 @@ function TypeTab({
       <canvas ref={previewRef} className="hidden" />
 
       {/* Font picker cards */}
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-2 gap-2 max-h-56 overflow-y-auto pr-1">
         {HANDWRITING_FONTS.map(({ id, family, label }) => {
           const isSelected = selectedFont === family
           return (

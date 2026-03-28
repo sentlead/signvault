@@ -11,8 +11,9 @@
  *   - Filled (image):  shows the signature/initials PNG scaled to fit
  *   - Filled (text):   shows the date or typed text value
  *
- * Clicking an unfilled field fires onFieldClick so SigningEditor can
- * open the appropriate input (SignatureModal or inline text).
+ * When a field is filled and onResize is provided, a drag handle appears
+ * in the bottom-right corner so the user can resize the field before
+ * finishing. The new dimensions (as percentages) are sent back via onResize.
  */
 
 import Image from 'next/image'
@@ -37,6 +38,8 @@ interface FieldValueOverlayProps {
   containerW: number
   /** Height of the PDF container div in pixels */
   containerH: number
+  /** Called while the user drags the resize handle — newW and newH are percentages */
+  onResize?: (fieldId: string, newW: number, newH: number) => void
 }
 
 // Visual config per field type for the unfilled state label
@@ -77,6 +80,10 @@ const FIELD_CONFIG: Record<FieldType, {
   },
 }
 
+// Minimum field size in pixels when resizing
+const MIN_PX_W = 40
+const MIN_PX_H = 20
+
 export function FieldValueOverlay({
   fieldId,
   type,
@@ -88,6 +95,7 @@ export function FieldValueOverlay({
   onFieldClick,
   containerW,
   containerH,
+  onResize,
 }: FieldValueOverlayProps) {
   // Convert percentage positions to absolute pixels for positioning
   const pxLeft   = (x / 100) * containerW
@@ -102,13 +110,35 @@ export function FieldValueOverlay({
   // Determine whether the value is an image (base64 data URL) or plain text
   const isImage = isFilled && value!.startsWith('data:image')
 
+  // ── Resize handle drag ───────────────────────────────────────────────────────
+  function handleResizePointerDown(e: React.PointerEvent<HTMLDivElement>) {
+    e.stopPropagation()
+    e.preventDefault()
+
+    const startX = e.clientX
+    const startY = e.clientY
+    const startW = pxWidth
+    const startH = pxHeight
+
+    function onMove(me: PointerEvent) {
+      const newPxW = Math.max(startW + (me.clientX - startX), MIN_PX_W)
+      const newPxH = Math.max(startH + (me.clientY - startY), MIN_PX_H)
+      onResize!(fieldId, (newPxW / containerW) * 100, (newPxH / containerH) * 100)
+    }
+
+    function onUp() {
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+    }
+
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp)
+  }
+
   return (
     <div
       onClick={() => {
-        // Allow clicking date fields (they auto-fill) and unfilled fields
-        if (!isFilled) {
-          onFieldClick(fieldId)
-        }
+        if (!isFilled) onFieldClick(fieldId)
       }}
       style={{
         position: 'absolute',
@@ -129,20 +159,18 @@ export function FieldValueOverlay({
       title={isFilled ? 'Field filled' : config.label}
     >
       {isFilled ? (
-        // ── Filled state ───────────────────────────────────────────────────
+        // ── Filled state ─────────────────────────────────────────────────────
         isImage ? (
-          // Signature / initials — show the drawn image
           <div className="w-full h-full flex items-center justify-center bg-white dark:bg-gray-900">
             <Image
               src={value!}
               alt="Signature"
               fill
               style={{ objectFit: 'contain', padding: '2px' }}
-              unoptimized  // base64 data URLs cannot go through Next.js image optimization
+              unoptimized
             />
           </div>
         ) : (
-          // Date / text — show the string value
           <div className="w-full h-full flex items-center px-2 bg-white/90 dark:bg-gray-900/90">
             <span className="text-xs font-medium text-sv-text dark:text-sv-dark-text truncate leading-none">
               {value}
@@ -150,10 +178,27 @@ export function FieldValueOverlay({
           </div>
         )
       ) : (
-        // ── Unfilled state ─────────────────────────────────────────────────
+        // ── Unfilled state ────────────────────────────────────────────────────
         <div className={`w-full h-full flex items-center justify-center gap-1 ${config.text}`}>
           <Icon className="w-3.5 h-3.5 flex-shrink-0" />
           <span className="text-xs font-medium truncate">{config.label}</span>
+        </div>
+      )}
+
+      {/* ── Resize handle (only when filled and resizable) ─────────────────── */}
+      {isFilled && onResize && (
+        <div
+          onPointerDown={handleResizePointerDown}
+          style={{ position: 'absolute', bottom: 0, right: 0, width: 14, height: 14 }}
+          className="cursor-se-resize z-10 flex items-center justify-center
+                     bg-emerald-500 dark:bg-emerald-400 rounded-tl-sm"
+          title="Drag to resize"
+        >
+          {/* Two-line resize indicator */}
+          <svg width="8" height="8" viewBox="0 0 8 8" fill="none" aria-hidden="true">
+            <line x1="2" y1="7" x2="7" y2="2" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
+            <line x1="5" y1="7" x2="7" y2="5" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
+          </svg>
         </div>
       )}
     </div>

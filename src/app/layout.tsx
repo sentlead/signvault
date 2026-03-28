@@ -12,7 +12,11 @@
  */
 
 import type { Metadata } from 'next'
-import { Inter, Dancing_Script, Pacifico, Caveat, Sacramento } from 'next/font/google'
+import {
+  Inter,
+  Dancing_Script, Pacifico, Caveat, Sacramento,
+  Great_Vibes, Satisfy, Kaushan_Script, Alex_Brush,
+} from 'next/font/google'
 import { Providers } from './providers'
 import './globals.css'
 
@@ -52,6 +56,34 @@ const sacramento = Sacramento({
   preload: false,
   display: 'swap',
 })
+const greatVibes = Great_Vibes({
+  subsets: ['latin'],
+  weight: '400',
+  variable: '--font-great-vibes',
+  preload: false,
+  display: 'swap',
+})
+const satisfy = Satisfy({
+  subsets: ['latin'],
+  weight: '400',
+  variable: '--font-satisfy',
+  preload: false,
+  display: 'swap',
+})
+const kaushanScript = Kaushan_Script({
+  subsets: ['latin'],
+  weight: '400',
+  variable: '--font-kaushan-script',
+  preload: false,
+  display: 'swap',
+})
+const alexBrush = Alex_Brush({
+  subsets: ['latin'],
+  weight: '400',
+  variable: '--font-alex-brush',
+  preload: false,
+  display: 'swap',
+})
 
 export const metadata: Metadata = {
   title: 'SignVault — Free Online Document Signing',
@@ -73,7 +105,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${inter.variable} ${dancingScript.variable} ${pacifico.variable} ${caveat.variable} ${sacramento.variable}`}
+      className={`${inter.variable} ${dancingScript.variable} ${pacifico.variable} ${caveat.variable} ${sacramento.variable} ${greatVibes.variable} ${satisfy.variable} ${kaushanScript.variable} ${alexBrush.variable}`}
       suppressHydrationWarning // Required by next-themes to avoid SSR mismatch
     >
       <body className="min-h-screen antialiased bg-sv-bg dark:bg-sv-dark-bg text-sv-text dark:text-sv-dark-text">

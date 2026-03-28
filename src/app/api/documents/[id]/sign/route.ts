@@ -44,10 +44,20 @@ interface FieldValueInput {
   value: string
 }
 
+interface FieldSizeOverride {
+  fieldId: string
+  /** New width as a percentage of the page width (0–100) */
+  width: number
+  /** New height as a percentage of the page height (0–100) */
+  height: number
+}
+
 interface RequestBody {
   fields: FieldValueInput[]
   /** Optional: external-signer JWT token (alternative to Authorization header) */
   token?: string
+  /** Optional: per-field size overrides set when the user resizes a field during signing */
+  sizeOverrides?: FieldSizeOverride[]
 }
 
 // ── Helper: store a signed PDF (Blob in prod, disk in dev) ─────────────────────
@@ -104,7 +114,8 @@ async function loadPdfBytes(fileUrl: string): Promise<Buffer | null> {
 
 async function buildSignedPdf(
   documentId: string,
-  fileUrl: string
+  fileUrl: string,
+  sizeOverrides?: Map<string, { width: number; height: number }>
 ): Promise<Uint8Array | null> {
   // Load all fields that have a value
   const dbFields = await prisma.signatureField.findMany({
@@ -130,9 +141,13 @@ async function buildSignedPdf(
     const page = pdfDoc.getPage(field.pageNumber - 1)
     const { width: pageW, height: pageH } = page.getSize()
 
+    const override  = sizeOverrides?.get(field.id)
+    const fieldW    = override?.width  ?? field.width
+    const fieldH    = override?.height ?? field.height
+
     const absX      = (field.x / 100) * pageW
-    const absWidth  = (field.width / 100) * pageW
-    const absHeight = (field.height / 100) * pageH
+    const absWidth  = (fieldW / 100) * pageW
+    const absHeight = (fieldH / 100) * pageH
     // Convert top-left origin (CSS) to bottom-left origin (PDF)
     const absY = pageH - (field.y / 100) * pageH - absHeight
 
@@ -278,7 +293,10 @@ export async function POST(
       })
 
       if (document) {
-        const signedBytes = await buildSignedPdf(id, document.fileUrl)
+        const signerSizeOverrideMap = body.sizeOverrides
+          ? new Map(body.sizeOverrides.map(({ fieldId, width, height }) => [fieldId, { width, height }]))
+          : undefined
+        const signedBytes = await buildSignedPdf(id, document.fileUrl, signerSizeOverrideMap)
 
         if (signedBytes) {
           const signedFilename = `${id}-signed.pdf`
@@ -361,7 +379,10 @@ export async function POST(
   )
 
   // Build signed PDF using the shared helper (reads all filled fields from DB)
-  const signedBytes = await buildSignedPdf(id, document.fileUrl)
+  const sizeOverrideMap = body.sizeOverrides
+    ? new Map(body.sizeOverrides.map(({ fieldId, width, height }) => [fieldId, { width, height }]))
+    : undefined
+  const signedBytes = await buildSignedPdf(id, document.fileUrl, sizeOverrideMap)
   if (!signedBytes) {
     return NextResponse.json({ error: 'Original PDF not found' }, { status: 500 })
   }

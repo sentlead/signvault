@@ -62,6 +62,9 @@ interface SigningEditorProps {
 /** Values collected during signing — fieldId → data URL or text */
 type FieldValues = Record<string, string>
 
+/** Per-field size overrides set when the user drags the resize handle */
+type FieldSizeOverrides = Record<string, { width: number; height: number }>
+
 // Default rendered width of the PDF at 100% zoom
 const BASE_WIDTH = 800
 
@@ -121,6 +124,13 @@ export function SigningEditor({
   const [textInputFieldId, setTextInputFieldId] = useState<string | null>(null)
   const [textInputValue, setTextInputValue]     = useState('')
 
+  // ── Field size overrides (set by dragging the resize handle) ─────────────
+  const [fieldSizeOverrides, setFieldSizeOverrides] = useState<FieldSizeOverrides>({})
+
+  const handleResize = useCallback((fieldId: string, newW: number, newH: number) => {
+    setFieldSizeOverrides((prev) => ({ ...prev, [fieldId]: { width: newW, height: newH } }))
+  }, [])
+
   // ── Finish / generate state ───────────────────────────────────────────────
   const [isGenerating, setIsGenerating] = useState(false)
   const [genError, setGenError]         = useState<string | null>(null)
@@ -173,11 +183,16 @@ export function SigningEditor({
     setGenError(null)
 
     try {
+      const sizeOverrides = Object.entries(fieldSizeOverrides).map(
+        ([fieldId, { width, height }]) => ({ fieldId, width, height })
+      )
+
       const res = await fetch(`/api/documents/${documentId}/sign`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           fields: Object.entries(fieldValues).map(([fieldId, value]) => ({ fieldId, value })),
+          sizeOverrides: sizeOverrides.length > 0 ? sizeOverrides : undefined,
         }),
       })
 
@@ -375,21 +390,25 @@ export function SigningEditor({
                 />
 
                 {/* Clickable field overlays */}
-                {pageFields.map((field) => (
-                  <FieldValueOverlay
-                    key={field.id}
-                    fieldId={field.id}
-                    type={field.type as 'signature' | 'initials' | 'date' | 'text'}
-                    x={field.x}
-                    y={field.y}
-                    width={field.width}
-                    height={field.height}
-                    value={fieldValues[field.id]}
-                    onFieldClick={handleFieldClick}
-                    containerW={pageWidth}
-                    containerH={pageHeight}
-                  />
-                ))}
+                {pageFields.map((field) => {
+                  const sizeOverride = fieldSizeOverrides[field.id]
+                  return (
+                    <FieldValueOverlay
+                      key={field.id}
+                      fieldId={field.id}
+                      type={field.type as 'signature' | 'initials' | 'date' | 'text'}
+                      x={field.x}
+                      y={field.y}
+                      width={sizeOverride?.width ?? field.width}
+                      height={sizeOverride?.height ?? field.height}
+                      value={fieldValues[field.id]}
+                      onFieldClick={handleFieldClick}
+                      containerW={pageWidth}
+                      containerH={pageHeight}
+                      onResize={handleResize}
+                    />
+                  )
+                })}
               </div>
             </Document>
           </div>
