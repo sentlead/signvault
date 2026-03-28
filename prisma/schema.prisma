@@ -75,6 +75,7 @@ model User {
   savedSignatures SavedSignature[]
   usageRecords    UsageRecord[]
   templates       Template[]
+  bulkSends       BulkSend[]
 }
 
 // Tracks how many documents a user has created each calendar month
@@ -106,6 +107,10 @@ model Document {
   reminderEnabled   Boolean   @default(true)
   reminderInterval  Int       @default(3)  // days between auto-reminders
   lastReminderAt    DateTime?              // last time cron sent an auto-reminder
+
+  // Bulk send linkage — set when this document was created as part of a bulk batch
+  bulkSendId    String?
+  bulkSend      BulkSend? @relation(fields: [bulkSendId], references: [id])
 
   owner           User             @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   signers         Signer[]
@@ -176,6 +181,23 @@ model Template {
   updatedAt   DateTime @updatedAt
 
   owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+}
+
+// A bulk-send batch — one record per "send to N recipients" action
+// Each recipient gets their own Document record linked back here via bulkSendId.
+model BulkSend {
+  id           String   @id @default(cuid())
+  ownerId      String
+  // Human-readable name for this batch (shown on the bulk send dashboard)
+  name         String
+  // Snapshot of the template name at send time (kept even if template is deleted)
+  templateName String
+  // Total number of documents created in this batch
+  totalCount   Int      @default(0)
+  createdAt    DateTime @default(now())
+
+  owner     User       @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  documents Document[]
 }
 
 // Stores user's saved signature images (base64 PNG data) for reuse

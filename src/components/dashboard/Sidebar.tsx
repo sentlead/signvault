@@ -18,7 +18,7 @@
 import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
 import { signOut } from 'next-auth/react'
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, startTransition } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   LayoutDashboard,
@@ -29,6 +29,7 @@ import {
   LogOut,
   X,
   CreditCard,
+  SendHorizonal,
 } from 'lucide-react'
 import { SignVaultLogo } from '@/components/ui/SignVaultLogo'
 
@@ -69,6 +70,12 @@ const navItems = [
     label: 'Templates',
     href: '/templates',
     icon: Copy,
+    badge: null,
+  },
+  {
+    label: 'Bulk Send',
+    href: '/bulk-send',
+    icon: SendHorizonal,
     badge: null,
   },
   {
@@ -116,7 +123,7 @@ export function Sidebar({ user }: SidebarProps) {
 
   // Close drawer on route change (user tapped a link)
   useEffect(() => {
-    setMobileOpen(false)
+    startTransition(() => setMobileOpen(false))
   }, [pathname, searchParams])
 
   // Determine if a nav link is currently active
