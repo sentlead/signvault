@@ -23,6 +23,7 @@ import {
   Bell,
   Eye,
   Activity,
+  Ban,
 } from 'lucide-react'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -43,13 +44,15 @@ interface AuditTrailProps {
 
 function formatAction(action: string): string {
   const labels: Record<string, string> = {
-    document_created:  'Document uploaded',
-    document_prepared: 'Signature fields placed',
-    document_signed:   'Document signed',
-    document_sent:     'Sent for signing',
-    document_viewed:   'Document viewed',
-    document_completed:'Document completed',
-    reminder_sent:     'Reminder sent',
+    document_created:   'Document uploaded',
+    document_prepared:  'Signature fields placed',
+    document_signed:    'Document signed',
+    document_sent:      'Sent for signing',
+    document_sent_bulk: 'Sent via Bulk Send',
+    document_viewed:    'Document viewed',
+    document_completed: 'Document completed',
+    document_voided:    'Document voided',
+    reminder_sent:      'Reminder sent',
   }
   return labels[action] ?? action.replace(/_/g, ' ')
 }
@@ -78,10 +81,17 @@ function getActionStyle(action: string): ActionStyle {
         iconClasses: 'text-emerald-500 dark:text-emerald-400',
       }
     case 'document_sent':
+    case 'document_sent_bulk':
       return {
         Icon: Send,
         dotClasses: 'bg-blue-500 dark:bg-blue-400',
         iconClasses: 'text-blue-500 dark:text-blue-400',
+      }
+    case 'document_voided':
+      return {
+        Icon: Ban,
+        dotClasses: 'bg-red-500 dark:bg-red-400',
+        iconClasses: 'text-red-500 dark:text-red-400',
       }
     case 'document_prepared':
       return {

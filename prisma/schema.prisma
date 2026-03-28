@@ -78,6 +78,7 @@ model User {
   bulkSends       BulkSend[]
   ownedTeam       Team?        @relation("TeamOwner")
   teamMemberships TeamMember[]
+  savedContacts   SavedContact[]
 }
 
 // Tracks how many documents a user has created each calendar month
@@ -246,6 +247,21 @@ model TeamInvitation {
   createdAt DateTime @default(now())
 
   team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+}
+
+// Saved contacts — frequently-used signers that the owner can pick from
+// in the prepare editor instead of typing their details every time.
+model SavedContact {
+  id        String   @id @default(cuid())
+  ownerId   String
+  name      String
+  email     String
+  createdAt DateTime @default(now())
+
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  // Enforce one entry per email per user (no duplicate contacts)
+  @@unique([ownerId, email])
 }
 
 // Stores user's saved signature images (base64 PNG data) for reuse

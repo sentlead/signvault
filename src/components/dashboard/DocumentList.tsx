@@ -20,7 +20,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
-import { FileText, Eye, Trash2, AlertCircle, Clock } from 'lucide-react'
+import { FileText, Eye, Trash2, AlertCircle, Clock, Search } from 'lucide-react'
 import { EmptyState } from './EmptyState'
 import { toast } from '@/lib/toast'
 
@@ -46,6 +46,7 @@ const TABS = [
   { key: 'awaiting_signatures', label: 'Awaiting' },
   { key: 'completed', label: 'Completed' },
   { key: 'expired', label: 'Expired' },
+  { key: 'void', label: 'Voided' },
 ] as const
 
 type TabKey = (typeof TABS)[number]['key']
@@ -61,6 +62,8 @@ function statusBadgeClasses(status: string): string {
       return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
     case 'expired':
       return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+    case 'void':
+      return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
     default:
       return 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
   }
@@ -73,6 +76,7 @@ function statusLabel(status: string): string {
     case 'awaiting_signatures': return 'Awaiting'
     case 'completed': return 'Completed'
     case 'expired': return 'Expired'
+    case 'void': return 'Voided'
     default: return status
   }
 }
@@ -119,13 +123,16 @@ function SkeletonRow() {
 export function DocumentList({ documents, loading = false }: DocumentListProps) {
   const router = useRouter()
   const [activeTab, setActiveTab] = useState<TabKey>('all')
+  const [search, setSearch] = useState('')
   // Track which document is being deleted (shows a loading state on that row)
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
-  // Filter documents based on active tab
+  // Filter documents based on active tab and search query
   const filtered = documents.filter((doc) => {
-    if (activeTab === 'all') return true
-    return doc.status === activeTab
+    const matchesTab = activeTab === 'all' || doc.status === activeTab
+    const matchesSearch = search.trim() === '' ||
+      doc.name.toLowerCase().includes(search.trim().toLowerCase())
+    return matchesTab && matchesSearch
   })
 
   // Handle document deletion
@@ -152,6 +159,27 @@ export function DocumentList({ documents, loading = false }: DocumentListProps) 
     <div className="bg-sv-surface dark:bg-sv-dark-surface
                     border border-sv-border dark:border-sv-dark-border
                     rounded-[var(--radius-card)] overflow-hidden">
+
+      {/* ── Search input ─────────────────────────────────────────────────── */}
+      <div className="px-4 pt-3 pb-2 border-b border-sv-border dark:border-sv-dark-border">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4
+                             text-sv-secondary dark:text-sv-dark-secondary pointer-events-none" />
+          <input
+            type="search"
+            placeholder="Search documents…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full pl-9 pr-3 py-2 text-sm rounded-[var(--radius-button)]
+                       bg-sv-bg dark:bg-sv-dark-bg
+                       border border-sv-border dark:border-sv-dark-border
+                       text-sv-text dark:text-sv-dark-text
+                       placeholder:text-sv-secondary dark:placeholder:text-sv-dark-secondary
+                       focus:outline-none focus:ring-2 focus:ring-sv-primary/50
+                       dark:focus:ring-sv-dark-primary/50"
+          />
+        </div>
+      </div>
 
       {/* ── Filter tabs ──────────────────────────────────────────────────── */}
       <div className="flex items-center border-b border-sv-border dark:border-sv-dark-border

@@ -25,8 +25,10 @@ import {
   Activity,
   PartyPopper,
   FilePen,
+  Award,
 } from 'lucide-react'
 import { AuditTrail } from '@/components/document/AuditTrail'
+import { VoidDocumentButton } from '@/components/document/VoidDocumentButton'
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -48,6 +50,10 @@ function StatusBadge({ status }: { status: string }) {
       label: 'Completed',
       classes: 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300',
     },
+    void: {
+      label: 'Voided',
+      classes: 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300',
+    },
   }
 
   const { label, classes } = map[status] ?? {
@@ -60,20 +66,6 @@ function StatusBadge({ status }: { status: string }) {
       {label}
     </span>
   )
-}
-
-// ── Audit action formatter ─────────────────────────────────────────────────────
-
-function formatAction(action: string): string {
-  const labels: Record<string, string> = {
-    document_created:  'uploaded this document',
-    document_prepared: 'placed signature fields',
-    document_signed:   'signed this document',
-    document_sent:     'sent this document for signing',
-    document_viewed:   'viewed this document',
-    reminder_sent:     'sent a reminder',
-  }
-  return labels[action] ?? action.replace(/_/g, ' ')
 }
 
 // ── Page ───────────────────────────────────────────────────────────────────────
@@ -124,7 +116,8 @@ export default async function DocumentDetailPage({ params }: PageProps) {
 
   if (!document) notFound()
 
-  const isCompleted = document.status === 'completed'
+  const isCompleted    = document.status === 'completed'
+  const isAwaiting     = document.status === 'awaiting_signatures'
 
   // Format dates
   const createdAt = new Intl.DateTimeFormat('en-US', {
@@ -258,6 +251,30 @@ export default async function DocumentDetailPage({ params }: PageProps) {
               <Download className="w-4 h-4" />
               Download Signed PDF
             </a>
+          )}
+
+          {/* Certificate of Completion — only when completed */}
+          {isCompleted && (
+            <a
+              href={`/api/documents/${document.id}/certificate`}
+              download
+              className="
+                inline-flex items-center gap-1.5 px-4 py-2 rounded-[var(--radius-button)]
+                border border-sv-border dark:border-sv-dark-border
+                text-sv-secondary dark:text-sv-dark-secondary text-sm font-medium
+                hover:border-emerald-300 dark:hover:border-emerald-700
+                hover:text-emerald-600 dark:hover:text-emerald-400
+                transition-colors
+              "
+            >
+              <Award className="w-4 h-4" />
+              Certificate
+            </a>
+          )}
+
+          {/* Void — only when awaiting signatures */}
+          {isAwaiting && (
+            <VoidDocumentButton documentId={document.id} />
           )}
         </div>
       </div>

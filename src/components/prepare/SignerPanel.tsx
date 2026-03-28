@@ -8,17 +8,13 @@
  *
  * Features:
  *   - "Add Signer" button that reveals an inline form (name + email)
- *   - List of added signers, each with:
- *       - A color dot (one color per signer, cycled from SIGNER_COLORS)
- *       - Name and email
- *       - A remove (×) button
- *
- * The parent component (PrepareEditor) owns the signers state and passes
- * it down here. This component only calls onAddSigner / onRemoveSigner.
+ *   - Saved contacts picker — pick a contact to auto-fill name + email
+ *   - "Save to Contacts" prompt after adding a signer who isn't saved yet
+ *   - List of added signers, each with a color dot, name, email, remove button
  */
 
-import { useState } from 'react'
-import { UserPlus, X, User } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { UserPlus, X, User, BookUser, Check } from 'lucide-react'
 
 // ── Signer color palette ───────────────────────────────────────────────────────
 // One color per signer slot. Cycles if there are more than 5 signers.
@@ -70,6 +66,12 @@ export interface SignerData {
   email: string
 }
 
+interface SavedContact {
+  id: string
+  name: string
+  email: string
+}
+
 interface SignerPanelProps {
   signers: SignerData[]
   onAddSigner: (signer: SignerData) => void
@@ -90,6 +92,40 @@ export function SignerPanel({
   const [emailInput, setEmailInput] = useState('')
   // Inline validation error
   const [formError, setFormError] = useState<string | null>(null)
+
+  // Saved contacts state
+  const [contacts, setContacts] = useState<SavedContact[]>([])
+  const [showContactPicker, setShowContactPicker] = useState(false)
+  const [contactFilter, setContactFilter] = useState('')
+  // After adding a signer who isn't in contacts yet, prompt to save them
+  const [savePrompt, setSavePrompt] = useState<{ name: string; email: string } | null>(null)
+  const [savingContact, setSavingContact] = useState(false)
+  const [savedConfirm, setSavedConfirm] = useState(false)
+  const filterRef = useRef<HTMLInputElement>(null)
+
+  // Load saved contacts once when the form opens
+  useEffect(() => {
+    if (!showForm) return
+    fetch('/api/contacts')
+      .then((r) => r.json())
+      .then((data: { contacts?: SavedContact[] }) => {
+        if (data.contacts) setContacts(data.contacts)
+      })
+      .catch(() => {/* silently ignore */})
+  }, [showForm])
+
+  // Focus the filter input when the picker opens
+  useEffect(() => {
+    if (showContactPicker) filterRef.current?.focus()
+  }, [showContactPicker])
+
+  function pickContact(contact: SavedContact) {
+    setNameInput(contact.name)
+    setEmailInput(contact.email)
+    setFormError(null)
+    setShowContactPicker(false)
+    setContactFilter('')
+  }
 
   function handleAdd() {
     const name = nameInput.trim()
@@ -117,11 +153,19 @@ export function SignerPanel({
       email,
     })
 
+    // If this email isn't in contacts yet, offer to save it
+    const alreadySaved = contacts.some((c) => c.email.toLowerCase() === email)
+    if (!alreadySaved) {
+      setSavePrompt({ name, email })
+    }
+
     // Reset form
     setNameInput('')
     setEmailInput('')
     setFormError(null)
     setShowForm(false)
+    setShowContactPicker(false)
+    setContactFilter('')
   }
 
   function handleCancel() {
@@ -129,7 +173,40 @@ export function SignerPanel({
     setEmailInput('')
     setFormError(null)
     setShowForm(false)
+    setShowContactPicker(false)
+    setContactFilter('')
   }
+
+  async function handleSaveContact() {
+    if (!savePrompt) return
+    setSavingContact(true)
+    try {
+      const res = await fetch('/api/contacts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: savePrompt.name, email: savePrompt.email }),
+      })
+      if (res.ok) {
+        // Add to local list so future sessions reflect it
+        const data = await res.json() as { contact?: SavedContact }
+        if (data.contact) setContacts((prev) => [...prev, data.contact!])
+        setSavedConfirm(true)
+        setTimeout(() => {
+          setSavePrompt(null)
+          setSavedConfirm(false)
+        }, 1500)
+      }
+    } catch {/* ignore */}
+    finally {
+      setSavingContact(false)
+    }
+  }
+
+  // Filter contacts by name or email
+  const filteredContacts = contacts.filter((c) => {
+    const q = contactFilter.toLowerCase()
+    return !q || c.name.toLowerCase().includes(q) || c.email.toLowerCase().includes(q)
+  })
 
   return (
     <div>
@@ -215,12 +292,130 @@ export function SignerPanel({
         </div>
       )}
 
+      {/* ── "Save to contacts?" prompt ───────────────────────────────────── */}
+      {savePrompt && (
+        <div className="
+          mb-2 px-3 py-2 rounded-[var(--radius-button)]
+          bg-indigo-50 dark:bg-indigo-900/20
+          border border-indigo-200 dark:border-indigo-800
+          flex items-center gap-2
+        ">
+          {savedConfirm ? (
+            <>
+              <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
+              <span className="text-xs text-emerald-700 dark:text-emerald-300">
+                Saved to contacts!
+              </span>
+            </>
+          ) : (
+            <>
+              <BookUser className="w-3.5 h-3.5 text-indigo-500 dark:text-indigo-400 flex-shrink-0" />
+              <span className="text-xs text-sv-text dark:text-sv-dark-text flex-1 min-w-0 truncate">
+                Save {savePrompt.name} to contacts?
+              </span>
+              <button
+                onClick={handleSaveContact}
+                disabled={savingContact}
+                className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline disabled:opacity-50"
+              >
+                Save
+              </button>
+              <button
+                onClick={() => setSavePrompt(null)}
+                className="text-xs text-sv-secondary dark:text-sv-dark-secondary hover:underline"
+              >
+                Skip
+              </button>
+            </>
+          )}
+        </div>
+      )}
+
       {/* ── Add signer form ──────────────────────────────────────────────── */}
       {showForm ? (
         <div className="space-y-2">
+
+          {/* Contact picker toggle — only shown if there are saved contacts */}
+          {contacts.length > 0 && (
+            <div>
+              <button
+                type="button"
+                onClick={() => setShowContactPicker((v) => !v)}
+                className="
+                  flex items-center gap-1.5 text-xs
+                  text-sv-secondary dark:text-sv-dark-secondary
+                  hover:text-sv-primary dark:hover:text-sv-dark-primary
+                  transition-colors mb-1.5
+                "
+              >
+                <BookUser className="w-3.5 h-3.5" />
+                Pick from saved contacts
+              </button>
+
+              {/* Contacts dropdown */}
+              {showContactPicker && (
+                <div className="
+                  mb-2 rounded-[var(--radius-button)] overflow-hidden
+                  border border-sv-border dark:border-sv-dark-border
+                  bg-sv-surface dark:bg-sv-dark-surface
+                  shadow-sm
+                ">
+                  {/* Filter input */}
+                  <div className="p-1.5 border-b border-sv-border dark:border-sv-dark-border">
+                    <input
+                      ref={filterRef}
+                      type="text"
+                      value={contactFilter}
+                      onChange={(e) => setContactFilter(e.target.value)}
+                      placeholder="Filter contacts…"
+                      className="
+                        w-full px-2 py-1 text-xs rounded
+                        bg-sv-bg dark:bg-sv-dark-bg
+                        text-sv-text dark:text-sv-dark-text
+                        placeholder:text-sv-secondary dark:placeholder:text-sv-dark-secondary
+                        border border-sv-border dark:border-sv-dark-border
+                        focus:outline-none focus:ring-1 focus:ring-sv-primary/50
+                      "
+                    />
+                  </div>
+
+                  {/* Contact list */}
+                  <ul className="max-h-36 overflow-y-auto">
+                    {filteredContacts.length === 0 ? (
+                      <li className="px-3 py-2 text-xs text-sv-secondary dark:text-sv-dark-secondary">
+                        No contacts match.
+                      </li>
+                    ) : (
+                      filteredContacts.map((c) => (
+                        <li key={c.id}>
+                          <button
+                            type="button"
+                            onClick={() => pickContact(c)}
+                            className="
+                              w-full text-left px-3 py-2 text-xs
+                              hover:bg-sv-bg dark:hover:bg-sv-dark-bg
+                              transition-colors
+                            "
+                          >
+                            <span className="font-medium text-sv-text dark:text-sv-dark-text">
+                              {c.name}
+                            </span>
+                            <span className="ml-1.5 text-sv-secondary dark:text-sv-dark-secondary">
+                              {c.email}
+                            </span>
+                          </button>
+                        </li>
+                      ))
+                    )}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Name input */}
           <input
-            autoFocus
+            autoFocus={contacts.length === 0}
             type="text"
             value={nameInput}
             onChange={(e) => { setNameInput(e.target.value); setFormError(null) }}
