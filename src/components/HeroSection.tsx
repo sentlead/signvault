@@ -19,6 +19,7 @@
 import { motion } from 'framer-motion'
 import { ArrowRight, Play } from 'lucide-react'
 import { AnimatedBackground } from './AnimatedBackground'
+import { DocumentAnimation } from './DocumentAnimation'
 
 // Reusable animation variant — slides up from 24px below and fades in
 const fadeUp = {
@@ -133,6 +134,9 @@ export function HeroSection() {
         >
           Trusted by <strong className="text-sv-text dark:text-sv-dark-text font-semibold">12,847+</strong> users &mdash; no credit card required
         </motion.p>
+
+        {/* ── Animated document preview ─────────────────────────────────── */}
+        <DocumentAnimation />
       </div>
     </section>
   )

@@ -71,6 +71,7 @@ function formatAction(action: string): string {
     document_signed:   'signed this document',
     document_sent:     'sent this document for signing',
     document_viewed:   'viewed this document',
+    reminder_sent:     'sent a reminder',
   }
   return labels[action] ?? action.replace(/_/g, ' ')
 }

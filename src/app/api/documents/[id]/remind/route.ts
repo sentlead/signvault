@@ -85,7 +85,8 @@ export async function POST(
 
   // ── 5. Send reminder email ────────────────────────────────────────────────
   const senderName = document.owner.name ?? document.owner.email ?? 'Someone'
-  const baseUrl = process.env.NEXTAUTH_URL ?? 'http://localhost:3000'
+  const baseUrl = process.env.NEXTAUTH_URL
+    ?? (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')
 
   await sendSigningReminder({
     to: signer.email,

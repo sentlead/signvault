@@ -301,7 +301,8 @@ export async function POST(
           })
 
           // Notify the document owner that all parties have signed
-          const baseUrl = process.env.NEXTAUTH_URL ?? 'http://localhost:3000'
+          const baseUrl = process.env.NEXTAUTH_URL
+          ?? (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')
           const ownerEmail = document.owner.email
           if (ownerEmail) {
             await sendCompletionNotification({
@@ -349,7 +350,7 @@ export async function POST(
     return NextResponse.json({ error: 'Document not found' }, { status: 404 })
   }
 
-  // Update each field value in the DB
+  // Save field values to DB first so buildSignedPdf picks them up
   await Promise.all(
     body.fields.map(({ fieldId, value }) =>
       prisma.signatureField.updateMany({
@@ -359,71 +360,12 @@ export async function POST(
     )
   )
 
-  // Build value map for PDF embedding
-  const valueMap = new Map<string, string>(
-    body.fields.map(({ fieldId, value }) => [fieldId, value])
-  )
-
-  // Load the original PDF
-  const pdfBytes = await loadPdfBytes(document.fileUrl)
-  if (!pdfBytes) {
+  // Build signed PDF using the shared helper (reads all filled fields from DB)
+  const signedBytes = await buildSignedPdf(id, document.fileUrl)
+  if (!signedBytes) {
     return NextResponse.json({ error: 'Original PDF not found' }, { status: 500 })
   }
 
-  let pdfDoc: PDFDocument
-  try {
-    pdfDoc = await PDFDocument.load(new Uint8Array(pdfBytes))
-  } catch {
-    return NextResponse.json({ error: 'Failed to parse PDF' }, { status: 500 })
-  }
-
-  const helvetica = await pdfDoc.embedFont(StandardFonts.Helvetica)
-
-  const dbFields = await prisma.signatureField.findMany({
-    where: { documentId: id },
-  })
-
-  for (const field of dbFields) {
-    const value = valueMap.get(field.id)
-    if (!value) continue
-
-    const page = pdfDoc.getPage(field.pageNumber - 1)
-    const { width: pageW, height: pageH } = page.getSize()
-
-    const absX      = (field.x / 100) * pageW
-    const absWidth  = (field.width / 100) * pageW
-    const absHeight = (field.height / 100) * pageH
-    const absY      = pageH - (field.y / 100) * pageH - absHeight
-
-    if (field.type === 'signature' || field.type === 'initials') {
-      const base64Data = value.replace(/^data:image\/\w+;base64,/, '')
-      const imgBytes   = Buffer.from(base64Data, 'base64')
-
-      try {
-        let img
-        try {
-          img = await pdfDoc.embedPng(new Uint8Array(imgBytes))
-        } catch {
-          img = await pdfDoc.embedJpg(new Uint8Array(imgBytes))
-        }
-        page.drawImage(img, { x: absX, y: absY, width: absWidth, height: absHeight })
-      } catch (imgErr) {
-        console.error('[sign] Failed to embed image for field', field.id, imgErr)
-      }
-    } else {
-      const fontSize = Math.min(12, Math.max(8, absHeight * 0.55))
-      page.drawText(value, {
-        x: absX + 4,
-        y: absY + (absHeight - fontSize) / 2,
-        size: fontSize,
-        font: helvetica,
-        color: rgb(0, 0, 0),
-        maxWidth: absWidth - 8,
-      })
-    }
-  }
-
-  const signedBytes    = await pdfDoc.save()
   const signedFilename = `${id}-signed.pdf`
 
   let signedFileUrl: string

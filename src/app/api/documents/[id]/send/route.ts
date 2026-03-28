@@ -171,7 +171,8 @@ export async function POST(
   // ── 9. Send signing-request emails ───────────────────────────────────────
   // Do this outside the transaction so a failed email doesn't roll back the DB changes.
   const senderName = document.owner.name ?? document.owner.email ?? 'Someone'
-  const baseUrl = process.env.NEXTAUTH_URL ?? 'http://localhost:3000'
+  const baseUrl = process.env.NEXTAUTH_URL
+    ?? (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')
 
   await Promise.all(
     createdSigners.map((signer) =>
