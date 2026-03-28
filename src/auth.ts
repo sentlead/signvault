@@ -18,8 +18,6 @@
 import NextAuth from "next-auth"
 import { PrismaAdapter } from "@auth/prisma-adapter"
 import Google from "next-auth/providers/google"
-import Apple from "next-auth/providers/apple"
-import Resend from "next-auth/providers/resend"
 import { prisma } from "@/lib/prisma"
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
@@ -36,19 +34,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     Google({
       clientId: process.env.AUTH_GOOGLE_ID!,
       clientSecret: process.env.AUTH_GOOGLE_SECRET!,
-    }),
-
-    // Apple OAuth — users click "Continue with Apple"
-    Apple({
-      clientId: process.env.AUTH_APPLE_ID!,
-      clientSecret: process.env.AUTH_APPLE_SECRET!,
-    }),
-
-    // Resend magic link — users enter their email and get a sign-in link
-    // No password required! The link expires after 24 hours.
-    Resend({
-      apiKey: process.env.RESEND_API_KEY,
-      from: "SignVault <noreply@signvault.co>",
     }),
   ],
 
