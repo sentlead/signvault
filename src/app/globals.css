@@ -6,6 +6,10 @@
 
 @import "tailwindcss";
 
+/* Tell Tailwind v4 to use class-based dark mode (set by next-themes on <html>)
+   instead of the default prefers-color-scheme media query. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* ─── Marching ants animation (used on the field draw ghost preview) ─────────
    The SVG rect's stroke-dashoffset shifts slowly, making the dashes appear
    to crawl around the border. Negative offset = clockwise march direction. */
