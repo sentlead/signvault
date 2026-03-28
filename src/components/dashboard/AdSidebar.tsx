@@ -14,22 +14,18 @@
  */
 
 import { AdUnit } from '@/components/ui/AdUnit'
+import { HoroscopumAd } from '@/components/ui/HoroscopumAd'
 
 export function AdSidebar() {
   return (
     <aside className="hidden xl:flex flex-col gap-4 w-[180px] flex-shrink-0">
 
-      {/* ── Medium Rectangle: 300×250 ─────────────────────────────────────── */}
+      {/* ── Horoscopum.com mockup ad ───────────────────────────────────────── */}
       <div>
         <p className="text-[10px] text-sv-secondary dark:text-sv-dark-secondary mb-1 uppercase tracking-widest">
           Advertisement
         </p>
-        <AdUnit
-          slot="1111111111"
-          format="rectangle"
-          style={{ width: 180, height: 150 }}
-          className="rounded-[8px]"
-        />
+        <HoroscopumAd />
       </div>
 
       {/* ── Wide Skyscraper: 160×600 ─────────────────────────────────────── */}
