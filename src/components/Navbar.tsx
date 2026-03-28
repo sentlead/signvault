@@ -19,7 +19,8 @@ import { useTheme } from 'next-themes'
 import { useSession, signOut } from 'next-auth/react'
 import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Sun, Moon, Vault, LayoutDashboard, LogOut } from 'lucide-react'
+import { Sun, Moon, LayoutDashboard, LogOut } from 'lucide-react'
+import { SignVaultLogo } from '@/components/ui/SignVaultLogo'
 
 export function Navbar() {
   // next-themes: wait until mounted to avoid hydration mismatch
@@ -63,10 +64,7 @@ export function Navbar() {
 
       {/* ── Logo ─────────────────────────────────────────────────────────── */}
       <Link href="/" className="flex items-center gap-2 select-none">
-        <div className="w-8 h-8 rounded-[8px] bg-sv-primary dark:bg-sv-dark-primary
-                        flex items-center justify-center shadow-sm">
-          <Vault className="w-4 h-4 text-white" strokeWidth={2.5} />
-        </div>
+        <SignVaultLogo size={32} />
         <span className="text-lg font-bold tracking-tight text-sv-text dark:text-sv-dark-text">
           Sign<span className="text-sv-primary dark:text-sv-dark-primary">Vault</span>
         </span>

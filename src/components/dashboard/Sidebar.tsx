@@ -27,9 +27,9 @@ import {
   Copy,
   Settings,
   LogOut,
-  Vault,
   X,
 } from 'lucide-react'
+import { SignVaultLogo } from '@/components/ui/SignVaultLogo'
 
 // Type for the session user passed from the server layout
 interface SessionUser {
@@ -127,10 +127,7 @@ export function Sidebar({ user }: SidebarProps) {
       {/* ── Logo ───────────────────────────────────────────────────────────── */}
       <div className="flex items-center gap-2.5 px-4 py-5 border-b border-sv-border dark:border-sv-dark-border">
         <Link href="/" className="flex items-center gap-2.5 hover:opacity-80 transition-opacity">
-          <div className="w-8 h-8 rounded-[8px] bg-sv-primary dark:bg-sv-dark-primary
-                          flex items-center justify-center shadow-sm flex-shrink-0">
-            <Vault className="w-4 h-4 text-white" strokeWidth={2.5} />
-          </div>
+          <SignVaultLogo size={32} />
           <span className="text-base font-bold tracking-tight text-sv-text dark:text-sv-dark-text">
             Sign<span className="text-sv-primary dark:text-sv-dark-primary">Vault</span>
           </span>

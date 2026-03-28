@@ -9,7 +9,7 @@
  * This is a Server Component (no 'use client') since it has no interactivity.
  */
 
-import { Vault } from 'lucide-react'
+import { SignVaultLogo } from '@/components/ui/SignVaultLogo'
 
 const footerLinks = [
   { label: 'Privacy Policy', href: '/privacy' },
@@ -33,10 +33,7 @@ export function Footer() {
         <div className="flex flex-col items-center md:items-start gap-2">
           {/* Logo */}
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-[8px] bg-sv-primary dark:bg-sv-dark-primary
-                            flex items-center justify-center">
-              <Vault className="w-3.5 h-3.5 text-white" strokeWidth={2.5} />
-            </div>
+            <SignVaultLogo size={28} />
             <span className="text-base font-bold text-sv-text dark:text-sv-dark-text">
               Sign<span className="text-sv-primary dark:text-sv-dark-primary">Vault</span>
             </span>

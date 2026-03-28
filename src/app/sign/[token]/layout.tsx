@@ -7,6 +7,7 @@
  */
 
 import type { ReactNode } from 'react'
+import { SignVaultLogo } from '@/components/ui/SignVaultLogo'
 
 interface SignLayoutProps {
   children: ReactNode
@@ -22,12 +23,12 @@ export default function SignLayout({ children }: SignLayoutProps) {
         bg-sv-surface dark:bg-sv-dark-surface
         border-b border-sv-border dark:border-sv-dark-border
       ">
-        <span className="
-          text-lg font-bold tracking-tight
-          text-sv-primary dark:text-sv-dark-primary
-        ">
-          ✦ SignVault
-        </span>
+        <div className="flex items-center gap-2">
+          <SignVaultLogo size={28} />
+          <span className="text-lg font-bold tracking-tight text-sv-text dark:text-sv-dark-text">
+            Sign<span className="text-sv-primary dark:text-sv-dark-primary">Vault</span>
+          </span>
+        </div>
       </header>
 
       {/* ── Page content ───────────────────────────────────────────────── */}

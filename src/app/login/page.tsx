@@ -26,7 +26,8 @@
 import { useState } from 'react'
 import { signIn } from 'next-auth/react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Vault, Mail, Loader2, CheckCircle2 } from 'lucide-react'
+import { Mail, Loader2, CheckCircle2 } from 'lucide-react'
+import { SignVaultLogo } from '@/components/ui/SignVaultLogo'
 import { AnimatedBackground } from '@/components/AnimatedBackground'
 
 // ─── Tab Configuration ────────────────────────────────────────────────────────
@@ -140,10 +141,7 @@ export default function LoginPage() {
 
           {/* ── Logo ─────────────────────────────────────────────────────── */}
           <div className="flex items-center gap-2.5 justify-center mb-8">
-            <div className="w-9 h-9 rounded-[8px] bg-sv-primary dark:bg-sv-dark-primary
-                            flex items-center justify-center shadow-sm">
-              <Vault className="w-5 h-5 text-white" strokeWidth={2.5} />
-            </div>
+            <SignVaultLogo size={36} />
             <span className="text-xl font-bold tracking-tight text-sv-text dark:text-sv-dark-text">
               Sign<span className="text-sv-primary dark:text-sv-dark-primary">Vault</span>
             </span>
