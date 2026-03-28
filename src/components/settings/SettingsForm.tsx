@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { User, Mail, Calendar, Chrome } from 'lucide-react'
+import { User, Mail, Calendar, Globe } from 'lucide-react'
 import { toast } from '@/lib/toast'
 
 interface Props {
@@ -138,7 +138,7 @@ export function SettingsForm({ user }: Props) {
         </h2>
         <div className="space-y-4">
           <div className="flex items-center gap-3">
-            <Chrome className="w-4 h-4 text-sv-secondary dark:text-sv-dark-secondary flex-shrink-0" />
+            <Globe className="w-4 h-4 text-sv-secondary dark:text-sv-dark-secondary flex-shrink-0" />
             <div>
               <p className="text-xs font-medium text-sv-text dark:text-sv-dark-text">Sign-in method</p>
               <p className="text-xs text-sv-secondary dark:text-sv-dark-secondary">Google OAuth</p>
