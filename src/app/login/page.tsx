@@ -81,13 +81,13 @@ export default function LoginPage() {
       })
 
       if (result?.error) {
-        setError('Something went wrong. Please try again.')
+        setError(result.error)
       } else {
         // Magic link sent! Show the success state.
         setMagicLinkSent(true)
       }
-    } catch {
-      setError('Something went wrong. Please try again.')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.')
     } finally {
       setIsEmailLoading(false)
     }
