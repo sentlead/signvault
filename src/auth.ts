@@ -7,7 +7,6 @@
  *   - Prisma adapter (stores users, sessions, accounts in SQLite)
  *   - Resend magic link email provider (passwordless sign-in via email)
  *   - Google OAuth provider
- *   - Apple OAuth provider (HTTPS/production only)
  *
  * Exports:
  *   - handlers: GET/POST route handlers for /api/auth/[...nextauth]
@@ -18,7 +17,6 @@
 import NextAuth from "next-auth"
 import { PrismaAdapter } from "@auth/prisma-adapter"
 import Google from "next-auth/providers/google"
-import Apple from "next-auth/providers/apple"
 import Resend from "next-auth/providers/resend"
 import { prisma } from "@/lib/prisma"
 import type { PlanId } from "@/lib/plans"
@@ -45,12 +43,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       clientSecret: process.env.AUTH_GOOGLE_SECRET!,
     }),
 
-    // Apple OAuth — users click "Continue with Apple"
-    // Note: Apple requires HTTPS, so this only works in production (not localhost)
-    Apple({
-      clientId: process.env.AUTH_APPLE_ID!,
-      clientSecret: process.env.AUTH_APPLE_SECRET!,
-    }),
   ],
 
   // Custom pages — instead of NextAuth's default UI, use our own
