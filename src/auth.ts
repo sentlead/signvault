@@ -34,7 +34,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     // Magic link emails via Resend — user enters email, gets a one-time sign-in link
     Resend({
       apiKey: process.env.RESEND_API_KEY!,
-      from: "SignVault <noreply@signvault.co>",
+      // Using Resend's shared test address — no domain verification needed.
+      // Swap this for "SignVault <noreply@signvault.co>" once signvault.co is owned and verified.
+      from: "SignVault <onboarding@resend.dev>",
     }),
 
     // Google OAuth — users click "Continue with Google"
